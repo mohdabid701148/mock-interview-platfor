@@ -1,174 +1,445 @@
-import useAuth from "../hooks/useAuth";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  LogOut,
-  BrainCircuit,
+  Video,
+  Users,
+  Activity,
   Sparkles,
-  CalendarDays,
-  BarChart3,
-  Target,
-  MessageSquareQuote,
-  Trophy,
-  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  Plus,
 } from "lucide-react";
 
-const Dashboard = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+import Sidebar from "../components/dashboard/Sidebar";
+import Navbar from "../components/dashboard/Navbar";
+import StatsCard from "../components/dashboard/StatsCard";
+import CreateRoomForm from "../components/rooms/CreateRoomForm";
+import JoinRoomForm from "../components/rooms/JoinRoomForm";
+import RoomCard from "../components/rooms/RoomCard";
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
+import { roomService } from "../services/room.service";
+import { useAuth } from "../hooks/useAuth";
+
+const Dashboard = () => {
+  const { user } = useAuth();
+
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const navigate = useNavigate();
+  const createRoomRef = useRef(null);
+
+  const loadRooms = async () => {
+    try {
+      const res = await roomService.getMyRooms();
+
+      setRooms(res?.data || res || []);
+
+    } catch (error) {
+
+      setMessage(
+        error?.response?.data?.message ||
+          "Failed to load rooms"
+      );
+    }
   };
 
+  useEffect(() => {
+    loadRooms();
+  }, []);
+
+  const handleCreateRoom = async (form) => {
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const res = await roomService.createRoom(form);
+
+      const room = res?.data || res;
+
+      navigate(`/rooms/${room.roomCode}`);
+
+    } catch (error) {
+
+      setMessage(
+        error?.response?.data?.message ||
+          "Failed to create room"
+      );
+
+    } finally {
+
+      setLoading(false);
+    }
+  };
+
+  const handleJoinRoom = async (roomCode) => {
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const res = await roomService.joinRoom(roomCode);
+
+      const room = res?.data || res;
+
+      navigate(`/rooms/${room.roomCode}`);
+
+    } catch (error) {
+
+      setMessage(
+        error?.response?.data?.message ||
+          "Failed to join room"
+      );
+
+    } finally {
+
+      setLoading(false);
+    }
+  };
+
+  // ===============================
+  // STATS
+  // ===============================
+
+  const activeRooms = rooms.filter(
+    (room) => room.status !== "completed"
+  );
+
+  const completedRooms = rooms.filter(
+    (room) => room.status === "completed"
+  );
+
+  const createdRooms = rooms.filter((room) => {
+
+    const creatorId =
+      room.createdBy?._id ||
+      room.createdBy;
+
+    return (
+      creatorId?.toString?.() ===
+      user?._id?.toString?.()
+    );
+  });
+
   return (
-    <div className="min-h-screen bg-[#07111f] text-white">
-      <div className="border-b border-white/10 bg-white/5 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-indigo-500 shadow-lg shadow-cyan-500/20">
-              <BrainCircuit className="h-5 w-5 text-white" />
+    <div className="min-h-screen bg-[#f6f8fb] text-slate-900">
+
+      <div className="flex">
+
+        {/* SIDEBAR */}
+        <Sidebar />
+
+        {/* MAIN */}
+        <main className="flex-1 px-6 py-6 lg:px-8">
+
+          {/* NAVBAR */}
+          <Navbar
+            title="Dashboard"
+            subtitle="Manage your mock interview rooms"
+            onCreateRoom={() =>
+              createRoomRef.current?.scrollIntoView({
+                behavior: "smooth",
+              })
+            }
+          />
+
+          {/* ERROR */}
+          {message && (
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {message}
             </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight">MockMate</h1>
-              <p className="text-sm text-slate-400">
-                Placement preparation dashboard
-              </p>
+          )}
+
+          {/* HERO SECTION */}
+          <section className="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white">
+
+            <div className="flex flex-col gap-10 px-8 py-10 lg:flex-row lg:items-center lg:justify-between">
+
+              {/* LEFT */}
+              <div className="max-w-2xl">
+
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
+                  <Sparkles size={16} />
+                  MockMate Platform
+                </div>
+
+                <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-900">
+                  Practice peer-to-peer mock interviews.
+                </h1>
+
+                <p className="mt-5 text-base leading-8 text-slate-500">
+                  Create interview rooms, collaborate with peers,
+                  and improve your technical and communication
+                  interview skills in a professional mock interview
+                  environment.
+                </p>
+
+                <div className="mt-8 flex flex-wrap gap-4">
+
+                  <button
+                    onClick={() =>
+                      createRoomRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                      })
+                    }
+                    className="flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    <Plus size={18} />
+                    Create Room
+                  </button>
+
+                  <button
+                    onClick={() => navigate("/rooms")}
+                    className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                  >
+                    Explore Rooms
+                  </button>
+                </div>
+              </div>
+
+              {/* RIGHT STATS */}
+              <div className="grid gap-4 sm:grid-cols-3 lg:w-[650px]">
+
+                <StatsCard
+                  title="Rooms Joined"
+                  value={rooms.length}
+                  subtitle="Rooms you joined"
+                  icon={Video}
+                />
+
+                <StatsCard
+                  title="Active Rooms"
+                  value={activeRooms.length}
+                  subtitle="Currently active"
+                  icon={Activity}
+                />
+
+                <StatsCard
+                  title="Rooms Created"
+                  value={createdRooms.length}
+                  subtitle="Created by you"
+                  icon={Users}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm text-slate-400">Welcome back</p>
-              <p className="font-semibold text-white">{user?.username}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
+            {/* QUICK FEATURES */}
+            <div className="grid gap-4 border-t border-slate-100 bg-slate-50 px-8 py-6 md:grid-cols-3">
 
-      <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
-        <section className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
-          <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-8 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-200">
-              <Sparkles className="h-4 w-4" />
-              Your interview prep workspace
-            </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
+                    <CheckCircle2 size={20} />
+                  </div>
 
-            <h2 className="mt-6 text-4xl font-black leading-tight sm:text-5xl">
-              Hello, {user?.username || "Student"}.
-              <span className="block bg-gradient-to-r from-cyan-300 to-indigo-400 bg-clip-text text-transparent">
-                Ready to crack placements?
-              </span>
-            </h2>
+                  <div>
+                    <p className="text-sm text-slate-500">
+                      Collaboration
+                    </p>
 
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-              Use MockMate to practice interview rounds, build confidence, and
-              prepare for company shortlists with a clean, focused workflow.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button className="rounded-2xl bg-gradient-to-r from-cyan-400 to-indigo-500 px-5 py-3 font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:scale-[1.01]">
-                Start mock interview
-              </button>
-              <button className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-white transition hover:bg-white/10">
-                View progress
-              </button>
-            </div>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {[
-                { icon: CalendarDays, label: "Sessions", value: "12" },
-                { icon: BarChart3, label: "Score", value: "84%" },
-                { icon: Trophy, label: "Rank", value: "Top 20%" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-5"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/10">
-                      <item.icon className="h-5 w-5 text-cyan-300" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-400">{item.label}</p>
-                      <p className="text-2xl font-black">{item.value}</p>
-                    </div>
+                    <h3 className="mt-1 font-semibold text-slate-900">
+                      Peer Interview Practice
+                    </h3>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-8">
-            <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-xl font-bold">Today&apos;s focus</h3>
-              <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-200">
-                Updated
-              </span>
-            </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-blue-100 p-3 text-blue-700">
+                    <Clock3 size={20} />
+                  </div>
 
-            <div className="space-y-4">
-              {[
-                {
-                  title: "HR interview basics",
-                  desc: "Practice self-intro, strengths, and project explanation.",
-                },
-                {
-                  title: "Technical round prep",
-                  desc: "Revise DSA, core CS concepts, and problem solving.",
-                },
-                {
-                  title: "Aptitude practice",
-                  desc: "Sharpen reasoning, quant, and time management.",
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-5 transition hover:bg-white/10"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h4 className="font-semibold text-white">{item.title}</h4>
-                      <p className="mt-1 text-sm leading-6 text-slate-400">
-                        {item.desc}
-                      </p>
-                    </div>
-                    <ArrowRight className="h-5 w-5 shrink-0 text-slate-500" />
+                  <div>
+                    <p className="text-sm text-slate-500">
+                      Real-Time
+                    </p>
+
+                    <h3 className="mt-1 font-semibold text-slate-900">
+                      Instant Room Joining
+                    </h3>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="mt-6 overflow-hidden rounded-3xl border border-white/10">
-              <img
-                src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80"
-                alt="Interview preparation workspace"
-                className="h-56 w-full object-cover"
-              />
-            </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-violet-100 p-3 text-violet-700">
+                    <Users size={20} />
+                  </div>
 
-            <div className="mt-6 rounded-3xl border border-cyan-400/20 bg-cyan-400/10 p-5">
-              <div className="flex items-start gap-3">
-                <MessageSquareQuote className="mt-0.5 h-5 w-5 text-cyan-300" />
-                <div>
-                  <h4 className="font-semibold text-white">MockMate tip</h4>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">
-                    Keep your answers short, structured, and confident. Use
-                    project-based examples whenever possible.
-                  </p>
+                  <div>
+                    <p className="text-sm text-slate-500">
+                      Environment
+                    </p>
+
+                    <h3 className="mt-1 font-semibold text-slate-900">
+                      Interview Ready
+                    </h3>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
-      </main>
+          </section>
+
+          {/* MAIN CONTENT */}
+          <section className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_420px]">
+
+            {/* LEFT */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+
+              <div className="mb-6 flex items-center justify-between">
+
+                <div>
+                  <h2 className="text-2xl font-semibold text-slate-900">
+                    Interview Rooms
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your recent and active rooms
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
+                  {rooms.length} Rooms
+                </div>
+              </div>
+
+              {rooms.length === 0 ? (
+
+                <div className="flex h-[360px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50">
+
+                  <Video
+                    size={50}
+                    className="text-slate-300"
+                  />
+
+                  <h3 className="mt-5 text-xl font-semibold text-slate-900">
+                    No Rooms Yet
+                  </h3>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    Create your first mock interview room
+                  </p>
+
+                  <button
+                    onClick={() =>
+                      createRoomRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                      })
+                    }
+                    className="mt-6 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    Create Room
+                  </button>
+                </div>
+
+              ) : (
+
+                <div className="space-y-4">
+
+                  {rooms.map((room) => (
+                    <RoomCard
+                      key={room._id}
+                      room={room}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT */}
+            <div className="space-y-6">
+
+              {/* CREATE ROOM */}
+              <div
+                ref={createRoomRef}
+                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+              >
+
+                <div className="mb-5">
+                  <h2 className="text-2xl font-semibold text-slate-900">
+                    Create Room
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Start a new mock interview session
+                  </p>
+                </div>
+
+                <CreateRoomForm
+                  onCreate={handleCreateRoom}
+                  loading={loading}
+                />
+              </div>
+
+              {/* JOIN ROOM */}
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+
+                <div className="mb-5">
+                  <h2 className="text-2xl font-semibold text-slate-900">
+                    Join Room
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Enter a room code to join
+                  </p>
+                </div>
+
+                <JoinRoomForm
+                  onJoin={handleJoinRoom}
+                  loading={loading}
+                />
+              </div>
+
+              {/* EXTRA STATS */}
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+
+                <h2 className="text-xl font-semibold text-slate-900">
+                  Room Insights
+                </h2>
+
+                <div className="mt-5 space-y-4">
+
+                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-4">
+                    <div>
+                      <p className="text-sm text-slate-500">
+                        Active Rooms
+                      </p>
+
+                      <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                        {activeRooms.length}
+                      </h3>
+                    </div>
+
+                    <Activity
+                      size={22}
+                      className="text-slate-400"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-4">
+                    <div>
+                      <p className="text-sm text-slate-500">
+                        Completed Rooms
+                      </p>
+
+                      <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                        {completedRooms.length}
+                      </h3>
+                    </div>
+
+                    <CheckCircle2
+                      size={22}
+                      className="text-slate-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
     </div>
   );
 };

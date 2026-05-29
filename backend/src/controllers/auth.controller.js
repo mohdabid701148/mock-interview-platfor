@@ -166,7 +166,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   await user.save({
     validateBeforeSave: false,
   });
-
+  console.log("token refreshed")
   return res
     .status(200)
     .cookie("accessToken", newAccessToken, cookieOptions)

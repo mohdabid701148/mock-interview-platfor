@@ -6,7 +6,7 @@ const Register = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    userName: "",
+    username: "",
     email: "",
     password: "",
   });
@@ -29,7 +29,7 @@ const Register = () => {
     setSuccess("");
 
     if (
-      !formData.userName ||
+      !formData.username ||
       !formData.email ||
       !formData.password
     ) {
@@ -42,7 +42,9 @@ const Register = () => {
 
       const response = await authService.register(formData);
 
-      setSuccess(response?.message || "Registration successful");
+      setSuccess(
+        response?.message || "Registration successful"
+      );
 
       setTimeout(() => {
         navigate("/login");
@@ -62,7 +64,7 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-100 via-white to-zinc-200 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md bg-white/90 backdrop-blur-md shadow-2xl rounded-3xl p-8 border border-zinc-200">
-        
+
         {/* Heading */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-zinc-900">
@@ -89,8 +91,11 @@ const Register = () => {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
+        >
+
           {/* Username */}
           <div>
             <label className="block mb-2 text-sm font-medium text-zinc-700">
@@ -99,9 +104,9 @@ const Register = () => {
 
             <input
               type="text"
-              name="userName"
+              name="username"
               placeholder="Enter username"
-              value={formData.userName}
+              value={formData.username}
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-xl border border-zinc-300 outline-none focus:ring-2 focus:ring-black transition"
             />
@@ -145,7 +150,9 @@ const Register = () => {
             disabled={loading}
             className="w-full bg-black hover:bg-zinc-800 text-white py-3 rounded-xl font-semibold transition-all duration-300 disabled:opacity-60"
           >
-            {loading ? "Creating Account..." : "Register"}
+            {loading
+              ? "Creating Account..."
+              : "Register"}
           </button>
         </form>
 

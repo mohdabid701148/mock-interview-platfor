@@ -1,9 +1,44 @@
 import axiosInstance from "../api/axios";
 
 export const authService = {
-  register: (data) => axiosInstance.post("/auth/register", data),
-  login: (data) => axiosInstance.post("/auth/login", data),
-  logout: () => axiosInstance.post("/auth/logout"),
-  getCurrentUser: () => axiosInstance.get("/auth/current-user"),
-  refreshToken: () => axiosInstance.post("/auth/refresh-token"),
+
+  login: async (data) => {
+    const res = await axiosInstance.post(
+      "/auth/login",
+      data
+    );
+
+    return res.data;
+  },
+
+  register: async (data) => {
+    const res = await axiosInstance.post(
+      "/auth/register",
+      data
+    );
+
+    return res.data;
+  },
+
+  logout: async () => {
+
+    const res = await axiosInstance.post(
+      "/auth/logout",
+      {},
+      {
+        skipAuthRefresh: true,
+      }
+    );
+
+    return res.data;
+  },
+
+  currentUser: async () => {
+
+    const res = await axiosInstance.get(
+      "/auth/current-user"
+    );
+
+    return res.data;
+  },
 };

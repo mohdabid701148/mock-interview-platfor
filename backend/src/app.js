@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/auth.routes.js";
 
-
+import roomRoutes from "./routes/room.routes.js";
 import { ApiError } from "./utils/apiError.js";
 
 const app = express();
@@ -36,7 +36,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/v1/auth", authRoutes);
 
-
+app.use("/api/v1/rooms", roomRoutes);
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));

@@ -1,50 +1,88 @@
-import { createContext, useState, useEffect, useCallback } from "react";
+import { createContext, useEffect, useState } from "react";
 import { authService } from "../services/auth.service";
 
-export const AuthContext = createContext(null);
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+
   const [user, setUser] = useState(null);
+
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = useCallback(async () => {
+  const fetchCurrentUser = async () => {
+
     try {
-      const res = await authService.getCurrentUser();
-      setUser(res.data.data);
+
+      const res = await authService.currentUser();
+
+      setUser(res?.data || res);
+
     } catch {
+
       setUser(null);
+
     } finally {
+
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchUser();
-
-    // Listen for token expiry events from axios interceptor
-    const handleExpiry = () => setUser(null);
-    window.addEventListener("auth:expired", handleExpiry);
-    return () => window.removeEventListener("auth:expired", handleExpiry);
-  }, [fetchUser]);
-
-  const login = async (credentials) => {
-    const res = await authService.login(credentials);
-    setUser(res.data.data.user);
-    return res.data;
   };
 
-  const register = async (data) => {
-    const res = await authService.register(data);
-    return res.data;
+  const login = async (payload) => {
+
+    const res = await authService.login(payload);
+
+    const loggedInUser =
+      res?.data?.user || res?.data || res;
+
+    setUser(loggedInUser);
+
+    return res;
+  };
+
+  const register = async (payload) => {
+
+    const res = await authService.register(payload);
+
+    return res;
   };
 
   const logout = async () => {
+
     await authService.logout();
+
     setUser(null);
   };
 
+  useEffect(() => {
+
+    const publicRoutes = [
+      "/login",
+      "/signup",
+    ];
+
+    // prevent auth loop
+    if (
+      publicRoutes.includes(window.location.pathname)
+    ) {
+      setLoading(false);
+      return;
+    }
+
+    fetchCurrentUser();
+
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        refetchUser: fetchCurrentUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
