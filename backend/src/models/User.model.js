@@ -101,7 +101,7 @@ userSchema.methods.generateAccessToken = function () {
     {
       _id: this._id,
       email: this.email,
-      userName: this.userName,
+      username: this.username,
       role: this.role,
     },
     process.env.ACCESS_TOKEN_SECRET,
@@ -123,6 +123,6 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-const User = mongoose.model("User", userSchema);
-
-export default User;
+export const User =
+  mongoose.models.User ||
+  mongoose.model("User", userSchema);

@@ -1,7 +1,6 @@
 import axiosInstance from "../api/axios";
 
 export const authService = {
-
   login: async (data) => {
     const res = await axiosInstance.post(
       "/auth/login",
@@ -21,7 +20,6 @@ export const authService = {
   },
 
   logout: async () => {
-
     const res = await axiosInstance.post(
       "/auth/logout",
       {},
@@ -34,9 +32,17 @@ export const authService = {
   },
 
   currentUser: async () => {
-
     const res = await axiosInstance.get(
       "/auth/current-user"
+    );
+
+    return res.data;
+  },
+
+  updateProfile: async (data) => {
+    const res = await axiosInstance.patch(
+      "/auth/update",
+      data
     );
 
     return res.data;

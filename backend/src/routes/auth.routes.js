@@ -11,6 +11,6 @@ router.route("/logout").post(verifyJWT,logoutUser);
 // i used typeof for debugging
 console.log("TYPE:", typeof registerUser);
 router.route("/current-user").get(verifyJWT, getProfile);
-router.route("/profile").patch(verifyJWT, userUpdate);
+router.route("/update").patch(verifyJWT, userUpdate);
 
 export default router

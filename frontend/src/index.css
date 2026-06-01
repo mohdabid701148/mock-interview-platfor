@@ -1,1 +1,124 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* =========================
+   APP BACKGROUND
+========================= */
+
+.app-bg {
+  @apply bg-[#f6f8fb] dark:bg-[#0a0a0a];
+}
+
+/* =========================
+   MAIN CARDS
+========================= */
+
+.app-card {
+  @apply border border-slate-200 bg-white
+         dark:border-[#2a2a2a]
+         dark:bg-[#171717];
+}
+
+/* =========================
+   INPUTS
+========================= */
+
+.app-input {
+  @apply border border-slate-300 bg-white text-slate-900
+         placeholder:text-slate-400
+
+         dark:border-[#2a2a2a]
+         dark:bg-[#1f1f1f]
+         dark:text-white
+         dark:placeholder:text-gray-500;
+}
+
+/* =========================
+   HEADINGS
+========================= */
+
+.app-heading {
+  @apply text-slate-900 dark:text-white;
+}
+
+/* =========================
+   SECONDARY TEXT
+========================= */
+
+.app-text {
+  @apply text-slate-600 dark:text-gray-400;
+}
+
+/* =========================
+   MUTED TEXT
+========================= */
+
+.app-muted {
+  @apply text-slate-500 dark:text-gray-500;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+.app-btn-primary {
+  @apply bg-slate-900 text-white
+         hover:bg-slate-800
+
+         dark:bg-white
+         dark:text-black
+         dark:hover:bg-gray-200;
+}
+
+.app-btn-secondary {
+  @apply border border-slate-300 bg-white text-slate-700
+         hover:bg-slate-100
+
+         dark:border-[#2a2a2a]
+         dark:bg-[#1f1f1f]
+         dark:text-gray-200
+         dark:hover:bg-[#262626];
+}
+
+/* =========================
+   PANELS
+========================= */
+
+.app-panel {
+  @apply bg-slate-50 border border-slate-200
+         dark:bg-[#1f1f1f]
+         dark:border-[#2a2a2a];
+}
+
+/* =========================
+   HOVER CARD
+========================= */
+
+.app-hover {
+  @apply transition-all duration-200
+         hover:bg-slate-50
+
+         dark:hover:bg-[#262626];
+}
+
+/* =========================
+   SCROLLBAR
+========================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+}
