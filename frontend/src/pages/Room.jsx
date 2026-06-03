@@ -15,16 +15,35 @@ import Sidebar from "../components/dashboard/Sidebar";
 import Navbar from "../components/dashboard/Navbar";
 import ParticipantList from "../components/rooms/ParticipantList";
 import { roomService } from "../services/room.service";
+import { useSocket } from "../hooks/useSocket";
 
 const getRoomFromResponse = (res) => {
   return res?.data?.room || res?.data || res?.room || res;
 };
 
+const getStatusClasses = (status) => {
+  switch (status) {
+    case "active":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300";
+    case "scheduled":
+      return "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300";
+    case "completed":
+      return "bg-slate-100 text-slate-600 dark:bg-[#1f1f1f] dark:text-gray-300";
+    case "cancelled":
+      return "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300";
+    case "waiting":
+    default:
+      return "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300";
+  }
+};
+
 const Room = () => {
   const { roomCode } = useParams();
   const navigate = useNavigate();
+  const { socket } = useSocket();
 
   const [room, setRoom] = useState(null);
+  const [activeUsers, setActiveUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
@@ -33,11 +52,28 @@ const Room = () => {
     return Array.isArray(room?.participants) ? room.participants : [];
   }, [room]);
 
+  const onlineParticipants = useMemo(() => {
+    return activeUsers.map((user) => ({
+      _id: user.userId,
+      user: {
+        _id: user.userId,
+        username: user.username,
+        email: user.email,
+      },
+      username: user.username,
+      email: user.email,
+      role: "Member",
+    }));
+  }, [activeUsers]);
+
   const creatorName =
     room?.createdBy?.username ||
     room?.createdBy?.name ||
     room?.createdBy?.email ||
     "Admin";
+
+  const socketRoomId = room?._id || room?.id || roomCode;
+  const roomStatus = room?.status || "waiting";
 
   const loadRoom = async () => {
     try {
@@ -66,6 +102,64 @@ const Room = () => {
     }
   }, [roomCode]);
 
+  useEffect(() => {
+    if (!socket || !socketRoomId || !room) {
+      return;
+    }
+
+    socket.emit("join-room", { roomId: socketRoomId });
+
+    socket.on("connect", () => {
+      socket.emit("join-room", { roomId: socketRoomId });
+    });
+
+    socket.on("connect_error", () => {
+      setMessage("Socket connection error");
+    });
+
+    socket.on("room-users", (users) => {
+      setActiveUsers(Array.isArray(users) ? users : []);
+    });
+
+    socket.on("socket-error", (error) => {
+      setMessage(error?.message || "Socket connection error");
+    });
+
+    return () => {
+      socket.emit("leave-room", { roomId: socketRoomId });
+      socket.off("connect");
+      socket.off("connect_error");
+      socket.off("room-users");
+      socket.off("user-joined");
+      socket.off("user-left");
+      socket.off("socket-error");
+    };
+  }, [socket, socketRoomId, room]);
+
+  const handleStartInterview = async () => {
+    try {
+      setMessage("");
+
+      const res = await roomService.startRoom(room?._id || room?.id);
+
+      setRoom(getRoomFromResponse(res));
+    } catch (error) {
+      setMessage(error?.response?.data?.message || "Failed to start interview");
+    }
+  };
+
+  const handleCompleteInterview = async () => {
+    try {
+      setMessage("");
+
+      const res = await roomService.completeRoom(room?._id || room?.id);
+
+      setRoom(getRoomFromResponse(res));
+    } catch (error) {
+      setMessage(error?.response?.data?.message || "Failed to complete interview");
+    }
+  };
+
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(room?.roomCode || roomCode);
@@ -79,6 +173,10 @@ const Room = () => {
   const handleLeave = async () => {
     try {
       setMessage("");
+
+      if (socket && socketRoomId) {
+        socket.emit("leave-room", { roomId: socketRoomId });
+      }
 
       if (roomService.leaveRoom) {
         await roomService.leaveRoom(room?._id || room?.id || roomCode);
@@ -159,14 +257,12 @@ const Room = () => {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <span
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium capitalize ${
-                    room?.status === "completed"
-                      ? "bg-slate-100 text-slate-600 dark:bg-[#1f1f1f] dark:text-gray-300"
-                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                  }`}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium capitalize ${getStatusClasses(
+                    roomStatus
+                  )}`}
                 >
                   <CheckCircle2 size={15} />
-                  {room?.status || "active"}
+                  {roomStatus}
                 </span>
 
                 <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -203,14 +299,36 @@ const Room = () => {
                   Back to Rooms
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleLeave}
-                  className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
-                >
-                  <LogOut size={17} />
-                  Leave Room
-                </button>
+                {roomStatus === "waiting" && (
+                  <button
+                    type="button"
+                    onClick={handleStartInterview}
+                    className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-emerald-700"
+                  >
+                    Start Interview
+                  </button>
+                )}
+
+                {roomStatus === "active" && (
+                  <button
+                    type="button"
+                    onClick={handleCompleteInterview}
+                    className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  >
+                    End Interview
+                  </button>
+                )}
+
+                {roomStatus !== "completed" && (
+                  <button
+                    type="button"
+                    onClick={handleLeave}
+                    className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+                  >
+                    <LogOut size={17} />
+                    Leave Room
+                  </button>
+                )}
               </div>
             </div>
 
@@ -238,10 +356,10 @@ const Room = () => {
                   </div>
 
                   <div>
-                    <p className="text-sm app-text">Max Participants</p>
+                    <p className="text-sm app-text">Online Now</p>
 
                     <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
-                      {room?.maxParticipants || 2}
+                      {activeUsers.length}/{room?.maxParticipants || 2}
                     </h3>
                   </div>
                 </div>
@@ -254,7 +372,7 @@ const Room = () => {
                   </div>
 
                   <div>
-                    <p className="text-sm app-text">Participants</p>
+                    <p className="text-sm app-text">Total Participants</p>
 
                     <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
                       {participants.length}/{room?.maxParticipants || 2}
@@ -284,7 +402,7 @@ const Room = () => {
                   <p className="text-sm app-text">Room Status</p>
 
                   <h3 className="mt-2 text-lg font-semibold capitalize text-slate-900 dark:text-white">
-                    {room?.status || "active"}
+                    {roomStatus}
                   </h3>
                 </div>
 
@@ -306,7 +424,11 @@ const Room = () => {
               </div>
             </div>
 
-            <ParticipantList participants={participants} />
+            <ParticipantList
+              participants={
+                onlineParticipants.length ? onlineParticipants : participants
+              }
+            />
           </section>
         </main>
       </div>

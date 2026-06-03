@@ -26,12 +26,24 @@ const processQueue = (error = null) => {
   failedQueue = [];
 };
 
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("accessToken");
+
+    if (token && token !== "undefined" && token !== "null") {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config || {};
 
-    // Skip refresh logic for logout / refresh calls
     if (originalRequest.skipAuthRefresh) {
       return Promise.reject(error);
     }
@@ -53,7 +65,7 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.post(
+        const refreshResponse = await axios.post(
           `${BASE_URL}/auth/refresh-token`,
           {},
           {
@@ -61,6 +73,15 @@ axiosInstance.interceptors.response.use(
             skipAuthRefresh: true,
           }
         );
+
+        const newAccessToken =
+          refreshResponse.data?.data?.accessToken ||
+          refreshResponse.data?.accessToken;
+
+        if (newAccessToken) {
+          localStorage.setItem("accessToken", newAccessToken);
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        }
 
         processQueue();
         return axiosInstance(originalRequest);

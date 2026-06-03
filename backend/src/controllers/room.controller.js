@@ -162,8 +162,9 @@ export const getRoomDetails = asyncHandler(async (req, res) => {
 // GET USER ROOMS
 export const getUserRooms = asyncHandler(async (req, res) => {
   const rooms = await Room.find({
-    participants: req.user._id,
-  })
+  participants: req.user._id,
+  status: { $ne: "completed" },
+})
     .populate("createdBy", "username email")
     .populate("participants", "username email")
     .sort({ createdAt: -1 });
@@ -173,6 +174,91 @@ export const getUserRooms = asyncHandler(async (req, res) => {
       200,
       rooms,
       "User rooms fetched successfully"
+    )
+  );
+});
+
+// START INTERVIEW
+export const startRoom = asyncHandler(async (req, res) => {
+  const { roomId } = req.params;
+
+  const room = await Room.findById(roomId);
+
+  if (!room) {
+    throw new ApiError(404, "Room not found");
+  }
+
+  const isParticipant = room.participants.some(
+    (participant) =>
+      participant.toString() === req.user._id.toString()
+  );
+
+  if (!isParticipant) {
+    throw new ApiError(403, "You are not a participant of this room");
+  }
+
+  if (room.status === "active") {
+    throw new ApiError(400, "Interview is already active");
+  }
+
+  if (room.status === "completed") {
+    throw new ApiError(400, "Completed interview cannot be started again");
+  }
+
+  room.status = "active";
+
+  await room.save();
+
+  const updatedRoom = await Room.findById(room._id)
+    .populate("createdBy", "username email")
+    .populate("participants", "username email");
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      updatedRoom,
+      "Interview started successfully"
+    )
+  );
+});
+
+
+// COMPLETE INTERVIEW
+export const completeRoom = asyncHandler(async (req, res) => {
+  const { roomId } = req.params;
+
+  const room = await Room.findById(roomId);
+
+  if (!room) {
+    throw new ApiError(404, "Room not found");
+  }
+
+  const isParticipant = room.participants.some(
+    (participant) =>
+      participant.toString() === req.user._id.toString()
+  );
+
+  if (!isParticipant) {
+    throw new ApiError(403, "You are not a participant of this room");
+  }
+
+  if (room.status !== "active") {
+    throw new ApiError(400, "Only active interview can be completed");
+  }
+
+  room.status = "completed";
+
+  await room.save();
+
+  const updatedRoom = await Room.findById(room._id)
+    .populate("createdBy", "username email")
+    .populate("participants", "username email");
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      updatedRoom,
+      "Interview completed successfully"
     )
   );
 });

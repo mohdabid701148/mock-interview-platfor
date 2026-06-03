@@ -22,63 +22,88 @@ function App() {
   const state = location.state;
   const backgroundLocation = state?.backgroundLocation;
 
+  const isAuthenticated = Boolean(localStorage.getItem("accessToken"));
+
   return (
     <>
-      {/* Main Routes */}
       <Routes location={backgroundLocation || location}>
         <Route
           path="/"
-          element={<Navigate to="/dashboard" replace />}
+          element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Login />
+            )
+          }
+        />
+
+        <Route
+          path="/signup"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Signup />
+            )
+          }
+        />
 
         <Route element={<ProtectedRoute />}>
-          <Route
-            path="/dashboard"
-            element={<Dashboard />}
-          />
-
-          <Route
-            path="/rooms"
-            element={<Rooms />}
-          />
-
-          <Route
-            path="/rooms/:roomCode"
-            element={<Room />}
-          />
-
-          <Route
-            path="/schedule"
-            element={<Schedule />}
-          />
-
-          <Route
-            path="/profile"
-            element={<Profile />}
-          />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/rooms" element={<Rooms />} />
+          <Route path="/rooms/:roomCode" element={<Room />} />
+          <Route path="/schedule" element={<Schedule />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
 
         <Route
           path="*"
-          element={<Navigate to="/dashboard" replace />}
+          element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
         />
       </Routes>
 
-      {/* Modal Routes */}
       {backgroundLocation && (
         <Routes>
           <Route element={<ProtectedRoute />}>
             <Route
-              path="/settings"
-              element={<Settings />}
+              path="/profile"
+              element={
+                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+                  <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl">
+                    <Profile modal />
+                  </div>
+                </div>
+              }
             />
 
             <Route
-              path="/profile"
-              element={<Profile />}
+              path="/settings"
+              element={
+                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+                  <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl">
+                    <Settings modal />
+                  </div>
+                </div>
+              }
             />
           </Route>
         </Routes>

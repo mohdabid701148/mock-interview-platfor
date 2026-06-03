@@ -30,7 +30,7 @@ const roomSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["waiting", "active", "completed"],
+      enum: ["waiting", "scheduled", "active", "completed", "cancelled"],
       default: "waiting",
     },
 

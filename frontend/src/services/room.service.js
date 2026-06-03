@@ -25,4 +25,14 @@ export const roomService = {
     const res = await axiosInstance.get("/rooms/my-rooms");
     return res.data;
   },
+
+  startRoom: async (roomId) => {
+    const res = await axiosInstance.patch(`/rooms/${roomId}/start`);
+    return res.data;
+  },
+
+  completeRoom: async (roomId) => {
+    const res = await axiosInstance.patch(`/rooms/${roomId}/complete`);
+    return res.data;
+  },
 };

@@ -25,10 +25,22 @@ const Navbar = ({
   const handleLogout = async () => {
     try {
       await logout?.();
+    } catch (error) {
+      console.log("Logout error:", error?.response?.data || error);
     } finally {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.replace("/login");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
+      sessionStorage.removeItem("accessToken");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+
+      window.dispatchEvent(new Event("auth-change"));
+
+      setShowMenu(false);
+
+      navigate("/login", { replace: true });
     }
   };
 
@@ -83,10 +95,8 @@ const Navbar = ({
               text-sm
               outline-none
               transition
-
               focus:border-slate-900
               focus:bg-white
-
               dark:border-[#2a2a2a]
               dark:bg-[#1f1f1f]
               dark:text-white
@@ -111,7 +121,6 @@ const Navbar = ({
             text-slate-600
             transition
             hover:bg-slate-100
-
             dark:border-[#2a2a2a]
             dark:bg-[#1f1f1f]
             dark:text-gray-300
@@ -138,7 +147,6 @@ const Navbar = ({
               text-white
               transition
               hover:bg-slate-800
-
               dark:bg-white
               dark:text-black
               dark:hover:bg-gray-200
@@ -164,7 +172,6 @@ const Navbar = ({
               py-2
               transition
               hover:bg-slate-100
-
               dark:border-[#2a2a2a]
               dark:bg-[#1f1f1f]
               dark:hover:bg-[#262626]
