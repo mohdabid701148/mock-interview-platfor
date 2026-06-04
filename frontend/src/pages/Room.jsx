@@ -103,39 +103,47 @@ const Room = () => {
     }
   }, [roomCode]);
 
-  useEffect(() => {
-    if (!socket || !socketRoomId || !room) {
-      return;
-    }
+useEffect(() => {
+  if (!socket || !socketRoomId || !room) {
+    return;
+  }
 
+  const handleConnect = () => {
     socket.emit("join-room", { roomId: socketRoomId });
+  };
 
-    socket.on("connect", () => {
-      socket.emit("join-room", { roomId: socketRoomId });
-    });
+  const handleConnectError = () => {
+    setMessage("Socket connection error");
+  };
 
-    socket.on("connect_error", () => {
-      setMessage("Socket connection error");
-    });
+  const handleRoomUsers = (users) => {
+    setActiveUsers(Array.isArray(users) ? users : []);
+  };
 
-    socket.on("room-users", (users) => {
-      setActiveUsers(Array.isArray(users) ? users : []);
-    });
+  const handleSocketError = (error) => {
+    setMessage(error?.message || "Socket connection error");
+  };
 
-    socket.on("socket-error", (error) => {
-      setMessage(error?.message || "Socket connection error");
-    });
+  socket.on("connect", handleConnect);
+  socket.on("connect_error", handleConnectError);
+  socket.on("room-users", handleRoomUsers);
+  socket.on("socket-error", handleSocketError);
 
-    return () => {
-      socket.emit("leave-room", { roomId: socketRoomId });
-      socket.off("connect");
-      socket.off("connect_error");
-      socket.off("room-users");
-      socket.off("user-joined");
-      socket.off("user-left");
-      socket.off("socket-error");
-    };
-  }, [socket, socketRoomId, room]);
+  if (socket.connected) {
+    socket.emit("join-room", { roomId: socketRoomId });
+  } else {
+    socket.connect();
+  }
+
+  return () => {
+    socket.emit("leave-room", { roomId: socketRoomId });
+
+    socket.off("connect", handleConnect);
+    socket.off("connect_error", handleConnectError);
+    socket.off("room-users", handleRoomUsers);
+    socket.off("socket-error", handleSocketError);
+  };
+}, [socket, socketRoomId, room]);
 
   const handleStartInterview = async () => {
     try {

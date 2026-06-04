@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import LanguageSelector from "./LanguageSelector";
 import { useSocket } from "../../hooks/useSocket";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const starterCode = {
   javascript: `function solution() {\n  \n}`,
@@ -12,9 +13,15 @@ const starterCode = {
 
 const CodeEditor = ({ roomId, disabled = false }) => {
   const { socket } = useSocket();
+
   const [language, setLanguage] = useState("javascript");
+  const [codeByLanguage, setCodeByLanguage] = useState(starterCode);
   const [code, setCode] = useState(starterCode.javascript);
+
+  const debouncedCode = useDebounce(code, 300);
+
   const isRemoteChange = useRef(false);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     if (!socket || !roomId) {
@@ -23,58 +30,104 @@ const CodeEditor = ({ roomId, disabled = false }) => {
 
     socket.emit("editor-join", { roomId });
 
-    socket.on("code-update", ({ code: incomingCode }) => {
+    const handleCodeUpdate = ({ language: incomingLanguage, code: incomingCode }) => {
       isRemoteChange.current = true;
-      setCode(incomingCode);
-    });
 
-    socket.on("language-update", ({ language: incomingLanguage, code: incomingCode }) => {
+      setCodeByLanguage((prev) => ({
+        ...prev,
+        [incomingLanguage || language]: incomingCode,
+      }));
+
+      if (!incomingLanguage || incomingLanguage === language) {
+        setCode(incomingCode);
+      }
+    };
+
+    const handleLanguageUpdate = ({
+      language: incomingLanguage,
+      codeByLanguage: incomingCodeByLanguage,
+    }) => {
       isRemoteChange.current = true;
+
+      const nextCodeByLanguage = incomingCodeByLanguage || starterCode;
+      const nextCode =
+        nextCodeByLanguage[incomingLanguage] ||
+        starterCode[incomingLanguage] ||
+        "";
+
       setLanguage(incomingLanguage);
-      setCode(incomingCode);
-    });
+      setCodeByLanguage(nextCodeByLanguage);
+      setCode(nextCode);
+    };
+
+    socket.on("code-update", handleCodeUpdate);
+    socket.on("language-update", handleLanguageUpdate);
 
     return () => {
-      socket.off("code-update");
-      socket.off("language-update");
+      socket.off("code-update", handleCodeUpdate);
+      socket.off("language-update", handleLanguageUpdate);
     };
-  }, [socket, roomId]);
+  }, [socket, roomId, language]);
 
-  const handleCodeChange = (value) => {
-    const newCode = value || "";
+  useEffect(() => {
+    if (!socket || !roomId) {
+      return;
+    }
 
-    setCode(newCode);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
 
     if (isRemoteChange.current) {
       isRemoteChange.current = false;
       return;
     }
 
-    if (socket && roomId) {
-      socket.emit("code-change", {
-        roomId,
-        code: newCode,
-      });
-    }
+    socket.emit("code-change", {
+      roomId,
+      language,
+      code: debouncedCode,
+    });
+  }, [debouncedCode, socket, roomId, language]);
+
+  const handleCodeChange = (value) => {
+    const newCode = value || "";
+
+    setCode(newCode);
+
+    setCodeByLanguage((prev) => ({
+      ...prev,
+      [language]: newCode,
+    }));
   };
 
   const handleLanguageChange = (newLanguage) => {
-    const newCode = starterCode[newLanguage] || "";
+    const nextCode =
+      codeByLanguage[newLanguage] ||
+      starterCode[newLanguage] ||
+      "";
+
+    const nextCodeByLanguage = {
+      ...codeByLanguage,
+      [language]: code,
+    };
 
     setLanguage(newLanguage);
-    setCode(newCode);
+    setCodeByLanguage(nextCodeByLanguage);
+    setCode(nextCode);
 
     if (socket && roomId) {
       socket.emit("language-change", {
         roomId,
         language: newLanguage,
-        code: newCode,
+        codeByLanguage: nextCodeByLanguage,
       });
     }
   };
 
   return (
-    <section className="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-[#2a2a2a] dark:bg-[#171717]">
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-[#2a2a2a] dark:bg-[#171717]">
       <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 dark:border-[#2a2a2a] md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
