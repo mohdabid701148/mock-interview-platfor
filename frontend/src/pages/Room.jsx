@@ -16,6 +16,7 @@ import Navbar from "../components/dashboard/Navbar";
 import ParticipantList from "../components/rooms/ParticipantList";
 import { roomService } from "../services/room.service";
 import { useSocket } from "../hooks/useSocket";
+import CodeEditor from "../components/editor/CodeEditor";
 
 const getRoomFromResponse = (res) => {
   return res?.data?.room || res?.data || res?.room || res;
@@ -156,7 +157,9 @@ const Room = () => {
 
       setRoom(getRoomFromResponse(res));
     } catch (error) {
-      setMessage(error?.response?.data?.message || "Failed to complete interview");
+      setMessage(
+        error?.response?.data?.message || "Failed to complete interview"
+      );
     }
   };
 
@@ -329,6 +332,16 @@ const Room = () => {
                     Leave Room
                   </button>
                 )}
+
+                {roomStatus === "completed" && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/rooms")}
+                    className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  >
+                    Go to Rooms
+                  </button>
+                )}
               </div>
             </div>
 
@@ -336,7 +349,10 @@ const Room = () => {
               <div className="app-panel rounded-3xl p-6">
                 <div className="flex items-center gap-4">
                   <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#171717]">
-                    <Globe size={22} className="text-slate-700 dark:text-gray-200" />
+                    <Globe
+                      size={22}
+                      className="text-slate-700 dark:text-gray-200"
+                    />
                   </div>
 
                   <div>
@@ -352,7 +368,10 @@ const Room = () => {
               <div className="app-panel rounded-3xl p-6">
                 <div className="flex items-center gap-4">
                   <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#171717]">
-                    <Users size={22} className="text-slate-700 dark:text-gray-200" />
+                    <Users
+                      size={22}
+                      className="text-slate-700 dark:text-gray-200"
+                    />
                   </div>
 
                   <div>
@@ -368,7 +387,10 @@ const Room = () => {
               <div className="app-panel rounded-3xl p-6">
                 <div className="flex items-center gap-4">
                   <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#171717]">
-                    <Code2 size={22} className="text-slate-700 dark:text-gray-200" />
+                    <Code2
+                      size={22}
+                      className="text-slate-700 dark:text-gray-200"
+                    />
                   </div>
 
                   <div>
@@ -382,6 +404,24 @@ const Room = () => {
               </div>
             </div>
           </section>
+
+          {roomStatus === "active" && (
+            <div className="mt-6">
+              <CodeEditor roomId={socketRoomId} />
+            </div>
+          )}
+
+          {roomStatus === "waiting" && (
+            <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-6 py-5 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+              Start the interview to unlock the collaborative editor.
+            </div>
+          )}
+
+          {roomStatus === "completed" && (
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-white px-6 py-5 text-sm text-slate-600 dark:border-[#2a2a2a] dark:bg-[#171717] dark:text-gray-400">
+              This interview is completed. The editor is now locked.
+            </div>
+          )}
 
           <section className="mt-6 grid gap-6 xl:grid-cols-[380px_1fr]">
             <div className="app-card rounded-3xl p-7 shadow-sm">

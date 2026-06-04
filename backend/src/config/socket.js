@@ -2,7 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import {User} from "../models/User.model.js";
 import { registerRoomSocketHandlers } from "../sockets/room.socket.js";
-
+import { registerEditorSocketHandlers } from "../sockets/editor.socket.js";
 export const initializeSocket = (server) => {
   const io = new Server(server, {
     cors: {
@@ -42,6 +42,6 @@ export const initializeSocket = (server) => {
   });
 
   registerRoomSocketHandlers(io);
-
+  registerEditorSocketHandlers(io);
   return io;
 };
