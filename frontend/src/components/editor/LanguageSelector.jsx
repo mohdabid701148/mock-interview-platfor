@@ -1,9 +1,10 @@
 const LanguageSelector = ({ language, onChange }) => {
   const languages = [
     { label: "JavaScript", value: "javascript" },
+    { label: "TypeScript", value: "typescript" },
     { label: "Python", value: "python" },
-    { label: "C++", value: "cpp" },
     { label: "Java", value: "java" },
+    { label: "C++", value: "cpp" },
   ];
 
   return (

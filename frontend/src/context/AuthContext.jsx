@@ -3,13 +3,35 @@ import { authService } from "../services/auth.service";
 
 export const AuthContext = createContext();
 
+const safeParseUser = () => {
+  try {
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  } catch {
+    localStorage.removeItem("user");
+    return null;
+  }
+};
+
 const getAccessToken = (res) => {
   return (
     res?.data?.data?.accessToken ||
     res?.data?.accessToken ||
     res?.data?.data?.tokens?.accessToken ||
     res?.data?.tokens?.accessToken ||
-    res?.accessToken
+    res?.accessToken ||
+    null
+  );
+};
+
+const getRefreshToken = (res) => {
+  return (
+    res?.data?.data?.refreshToken ||
+    res?.data?.refreshToken ||
+    res?.data?.data?.tokens?.refreshToken ||
+    res?.data?.tokens?.refreshToken ||
+    res?.refreshToken ||
+    null
   );
 };
 
@@ -25,16 +47,21 @@ const getUser = (res) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
+  const [user, setUser] = useState(safeParseUser);
   const [accessToken, setAccessToken] = useState(() => {
     return localStorage.getItem("accessToken");
   });
-
   const [loading, setLoading] = useState(true);
+
+  const clearAuthStorage = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    sessionStorage.clear();
+    setAccessToken(null);
+    setUser(null);
+    window.dispatchEvent(new Event("auth-change"));
+  };
 
   const fetchCurrentUser = async () => {
     try {
@@ -52,47 +79,52 @@ export const AuthProvider = ({ children }) => {
       if (currentUser) {
         localStorage.setItem("user", JSON.stringify(currentUser));
       }
+
+      return currentUser;
     } catch (err) {
-      console.log("CURRENT USER ERROR:", err?.response?.data || err);
+      const status = err?.response?.status;
 
       setUser(null);
       localStorage.removeItem("user");
+
+      if (status === 401 || status === 403) {
+        clearAuthStorage();
+      }
+
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
   const login = async (payload) => {
-    try {
-      const res = await authService.login(payload);
+    const res = await authService.login(payload);
 
-      console.log("AUTH CONTEXT LOGIN RESPONSE:", res);
+    const token = getAccessToken(res);
+    const refreshToken = getRefreshToken(res);
+    const loggedInUser = getUser(res);
 
-      const token = getAccessToken(res);
-      const loggedInUser = getUser(res);
-
-      console.log("EXTRACTED TOKEN:", token);
-      console.log("EXTRACTED USER:", loggedInUser);
-
-      if (!token) {
-        throw new Error("Access token not found in backend login response");
-      }
-
-      localStorage.setItem("accessToken", token);
-      setAccessToken(token);
-
-      if (loggedInUser) {
-        localStorage.setItem("user", JSON.stringify(loggedInUser));
-        setUser(loggedInUser);
-      }
-
-      window.dispatchEvent(new Event("auth-change"));
-
-      return res;
-    } catch (err) {
-      console.log("AUTH CONTEXT LOGIN ERROR:", err?.response?.data || err);
-      throw err;
+    if (!token) {
+      throw new Error("Access token not found in backend login response");
     }
+
+    localStorage.setItem("accessToken", token);
+    setAccessToken(token);
+
+    if (refreshToken) {
+      localStorage.setItem("refreshToken", refreshToken);
+    }
+
+    if (loggedInUser) {
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
+      setUser(loggedInUser);
+    } else {
+      await fetchCurrentUser();
+    }
+
+    window.dispatchEvent(new Event("auth-change"));
+
+    return res;
   };
 
   const register = async (payload) => {
@@ -105,14 +137,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.log("LOGOUT ERROR:", err?.response?.data || err);
     } finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
-      sessionStorage.clear();
-
-      setAccessToken(null);
-      setUser(null);
-
-      window.dispatchEvent(new Event("auth-change"));
+      clearAuthStorage();
     }
   };
 

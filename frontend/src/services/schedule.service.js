@@ -1,8 +1,14 @@
 import axiosInstance from "../api/axios";
 
 export const scheduleService = {
-  createSchedule: async (data) => {
-    const res = await axiosInstance.post("/schedule/create", data);
+  createSchedule: async ({ room, scheduledAt, durationMinutes, agenda }) => {
+    const res = await axiosInstance.post("/schedule/create", {
+      room,
+      scheduledAt,
+      durationMinutes,
+      agenda,
+    });
+
     return res.data;
   },
 
@@ -12,7 +18,10 @@ export const scheduleService = {
   },
 
   updateScheduleStatus: async (id, status) => {
-    const res = await axiosInstance.patch(`/schedule/${id}/status`, { status });
+    const res = await axiosInstance.patch(`/schedule/${id}/status`, {
+      status,
+    });
+
     return res.data;
   },
 

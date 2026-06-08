@@ -1,16 +1,24 @@
 import mongoose from "mongoose";
 import { Schedule } from "../models/Schedule.model.js";
 import { Room } from "../models/room.model.js";
-import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
-const validStatuses = ["scheduled", "ongoing", "completed", "cancelled"];
+const validStatuses = ["scheduled", "completed", "cancelled", "missed"];
+const validDurations = [30, 45, 60, 90, 120];
 
 const isValidDate = (value) => {
   const date = new Date(value);
   return !Number.isNaN(date.getTime());
+};
+
+const populateSchedule = async (scheduleId) => {
+  return await Schedule.findById(scheduleId)
+    .populate("room", "roomCode title language status meetingLink")
+    .populate("interviewer", "username fullName email avatar")
+    .populate("interviewee", "username fullName email avatar")
+    .populate("createdBy", "username fullName email avatar");
 };
 
 const hasTimeConflict = (existingSchedules, startTime, durationMinutes) => {
@@ -18,154 +26,171 @@ const hasTimeConflict = (existingSchedules, startTime, durationMinutes) => {
   const newEnd = newStart + durationMinutes * 60 * 1000;
 
   return existingSchedules.some((schedule) => {
-    const existingStart = new Date(schedule.scheduledTime).getTime();
-    const existingEnd = existingStart + schedule.duration * 60 * 1000;
+    const existingStart = new Date(schedule.scheduledAt).getTime();
+    const existingEnd =
+      existingStart + schedule.durationMinutes * 60 * 1000;
 
     return newStart < existingEnd && newEnd > existingStart;
   });
 };
 
-// CREATE SCHEDULE
 export const createSchedule = asyncHandler(async (req, res) => {
   const {
+    room,
     roomId,
-    interviewer,
-    interviewee,
+    scheduledAt,
     scheduledTime,
-    duration = 60,
+    durationMinutes = 60,
+    duration,
+    agenda = "",
   } = req.body;
 
-  if (!roomId || !interviewer || !interviewee || !scheduledTime) {
-    throw new ApiError(400, "roomId, interviewer, interviewee and scheduledTime are required");
+  const selectedRoomId = room || roomId;
+  const selectedTime = scheduledAt || scheduledTime;
+  const selectedDuration = Number(durationMinutes || duration || 60);
+
+  if (!selectedRoomId || !selectedTime) {
+    throw new ApiError(400, "Room and scheduled time are required");
   }
 
-  if (!mongoose.isValidObjectId(roomId)) {
-    throw new ApiError(400, "Invalid roomId");
+  if (!mongoose.isValidObjectId(selectedRoomId)) {
+    throw new ApiError(400, "Invalid room id");
   }
 
-  if (!mongoose.isValidObjectId(interviewer) || !mongoose.isValidObjectId(interviewee)) {
-    throw new ApiError(400, "Invalid interviewer or interviewee");
+  if (!isValidDate(selectedTime)) {
+    throw new ApiError(400, "Invalid scheduled date and time");
   }
 
-  if (interviewer === interviewee) {
-    throw new ApiError(400, "Interviewer and interviewee must be different users");
+  if (!validDurations.includes(selectedDuration)) {
+    throw new ApiError(
+      400,
+      "Duration must be 30, 45, 60, 90, or 120 minutes"
+    );
   }
 
-  const parsedDuration = Number(duration);
-  if (!Number.isFinite(parsedDuration) || parsedDuration <= 0) {
-    throw new ApiError(400, "Duration must be a positive number");
-  }
+  const scheduledDate = new Date(selectedTime);
 
-  if (!isValidDate(scheduledTime)) {
-    throw new ApiError(400, "Invalid scheduledTime");
-  }
-
-  const scheduledDate = new Date(scheduledTime);
   if (scheduledDate.getTime() <= Date.now()) {
     throw new ApiError(400, "Cannot schedule an interview in the past");
   }
 
-  const [room, interviewerUser, intervieweeUser] = await Promise.all([
-    Room.findById(roomId),
-    User.findById(interviewer),
-    User.findById(interviewee),
-  ]);
+  const interviewRoom = await Room.findById(selectedRoomId);
 
-  if (!room) {
-    throw new ApiError(404, "Room not found");
+  if (!interviewRoom) {
+    throw new ApiError(404, "Interview session not found");
   }
 
-  if (!interviewerUser) {
-    throw new ApiError(404, "Interviewer not found");
+  if (["active", "completed", "cancelled"].includes(interviewRoom.status)) {
+    throw new ApiError(
+      400,
+      "Only waiting or scheduled interview sessions can be scheduled"
+    );
   }
 
-  if (!intervieweeUser) {
-    throw new ApiError(404, "Interviewee not found");
+  if (!interviewRoom.interviewer) {
+    throw new ApiError(400, "Interview session does not have interviewer");
   }
 
-  const roomParticipantIds = new Set(
-    room.participants.map((participant) => participant.toString())
-  );
-
-  if (!roomParticipantIds.has(interviewer)) {
-    throw new ApiError(400, "Interviewer must be a participant in this room");
+  if (!interviewRoom.interviewee) {
+    throw new ApiError(
+      400,
+      "Interviewee must join before scheduling the interview"
+    );
   }
 
-  if (!roomParticipantIds.has(interviewee)) {
-    throw new ApiError(400, "Interviewee must be a participant in this room");
+  const requesterId = req.user._id.toString();
+  const interviewerId = interviewRoom.interviewer.toString();
+  const intervieweeId = interviewRoom.interviewee.toString();
+
+  if (requesterId !== interviewerId) {
+    throw new ApiError(403, "Only interviewer can schedule this interview");
   }
 
-  const requesterId = req.user?._id?.toString();
-  const creatorId = room.createdBy?.toString();
-
-  if (requesterId !== creatorId && !roomParticipantIds.has(requesterId)) {
-    throw new ApiError(403, "You are not allowed to schedule interviews in this room");
+  if (interviewerId === intervieweeId) {
+    throw new ApiError(
+      400,
+      "Interviewer and interviewee must be different users"
+    );
   }
 
-  const existingSchedules = await Schedule.find({
-    status: { $in: ["scheduled", "ongoing"] },
-    $or: [
-      { interviewer: { $in: [interviewer, interviewee] } },
-      { interviewee: { $in: [interviewer, interviewee] } },
-    ],
-  });
-
-  if (hasTimeConflict(existingSchedules, scheduledDate, parsedDuration)) {
-    throw new ApiError(409, "This time overlaps with an existing interview for one of the participants");
-  }
-
-  const schedule = await Schedule.create({
-    roomId,
-    interviewer,
-    interviewee,
-    scheduledTime: scheduledDate,
-    duration: parsedDuration,
+  const existingRoomSchedule = await Schedule.findOne({
+    room: selectedRoomId,
     status: "scheduled",
   });
 
-  const populatedSchedule = await Schedule.findById(schedule._id)
-    .populate("roomId", "roomCode title language")
-    .populate("interviewer", "username fullName email avatar")
-    .populate("interviewee", "username fullName email avatar");
+  if (existingRoomSchedule) {
+    throw new ApiError(
+      409,
+      "This interview session is already scheduled"
+    );
+  }
 
-  return res
-    .status(201)
-    .json(new ApiResponse(201, populatedSchedule, "Interview scheduled successfully"));
+  const existingSchedules = await Schedule.find({
+    status: "scheduled",
+    $or: [
+      { interviewer: { $in: [interviewerId, intervieweeId] } },
+      { interviewee: { $in: [interviewerId, intervieweeId] } },
+    ],
+  });
+
+  if (hasTimeConflict(existingSchedules, scheduledDate, selectedDuration)) {
+    throw new ApiError(
+      409,
+      "This time overlaps with an existing interview for one of the participants"
+    );
+  }
+
+  const schedule = await Schedule.create({
+    room: selectedRoomId,
+    interviewer: interviewRoom.interviewer,
+    interviewee: interviewRoom.interviewee,
+    scheduledAt: scheduledDate,
+    durationMinutes: selectedDuration,
+    agenda,
+    status: "scheduled",
+    createdBy: req.user._id,
+  });
+
+  if (interviewRoom.status === "waiting") {
+    interviewRoom.status = "scheduled";
+    await interviewRoom.save();
+  }
+
+  const populatedSchedule = await populateSchedule(schedule._id);
+
+  return res.status(201).json(
+    new ApiResponse(
+      201,
+      populatedSchedule,
+      "Interview scheduled successfully"
+    )
+  );
 });
 
-// GET UPCOMING INTERVIEWS (for current user)
 export const getUpcomingInterviews = asyncHandler(async (req, res) => {
-  const userId = req.user?._id;
-
-  const myRooms = await Room.find({ participants: userId }).select("_id");
-  const myRoomIds = myRooms.map((room) => room._id);
-
+  const userId = req.user._id;
   const now = new Date();
 
   const interviews = await Schedule.find({
-    status: { $in: ["scheduled", "ongoing"] },
-    $or: [
-      { interviewer: userId },
-      { interviewee: userId },
-      { roomId: { $in: myRoomIds } },
-    ],
+    status: "scheduled",
+    scheduledAt: { $gte: now },
+    $or: [{ interviewer: userId }, { interviewee: userId }],
   })
-    .populate("roomId", "roomCode title language")
+    .populate("room", "roomCode title language status meetingLink")
     .populate("interviewer", "username fullName email avatar")
     .populate("interviewee", "username fullName email avatar")
-    .sort({ scheduledTime: 1 });
+    .populate("createdBy", "username fullName email avatar")
+    .sort({ scheduledAt: 1 });
 
-  const upcoming = interviews.filter((item) => {
-    if (item.status === "ongoing") return true;
-    return new Date(item.scheduledTime).getTime() >= now.getTime();
-  });
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, upcoming, "Upcoming interviews fetched successfully"));
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      interviews,
+      "Upcoming interviews fetched successfully"
+    )
+  );
 });
 
-// UPDATE SCHEDULE STATUS
 export const updateScheduleStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -175,28 +200,57 @@ export const updateScheduleStatus = asyncHandler(async (req, res) => {
   }
 
   if (!status || !validStatuses.includes(status)) {
-    throw new ApiError(400, "Invalid status");
+    throw new ApiError(400, "Invalid schedule status");
   }
 
   const schedule = await Schedule.findById(id);
+
   if (!schedule) {
     throw new ApiError(404, "Schedule not found");
+  }
+
+  const requesterId = req.user._id.toString();
+  const interviewerId = schedule.interviewer.toString();
+  const intervieweeId = schedule.interviewee.toString();
+
+  const isParticipant =
+    requesterId === interviewerId || requesterId === intervieweeId;
+
+  if (!isParticipant) {
+    throw new ApiError(403, "You are not allowed to update this schedule");
+  }
+
+  if (status === "completed" && requesterId !== interviewerId) {
+    throw new ApiError(403, "Only interviewer can mark schedule as completed");
   }
 
   schedule.status = status;
   await schedule.save();
 
-  const updatedSchedule = await Schedule.findById(schedule._id)
-    .populate("roomId", "roomCode title language")
-    .populate("interviewer", "username fullName email avatar")
-    .populate("interviewee", "username fullName email avatar");
+  if (status === "completed") {
+    await Room.findByIdAndUpdate(schedule.room, {
+      status: "completed",
+      completedAt: new Date(),
+    });
+  }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, updatedSchedule, "Schedule status updated successfully"));
+  if (status === "cancelled") {
+    await Room.findByIdAndUpdate(schedule.room, {
+      status: "cancelled",
+    });
+  }
+
+  const updatedSchedule = await populateSchedule(schedule._id);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      updatedSchedule,
+      "Schedule status updated successfully"
+    )
+  );
 });
 
-// CANCEL SCHEDULE
 export const cancelSchedule = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -205,6 +259,7 @@ export const cancelSchedule = asyncHandler(async (req, res) => {
   }
 
   const schedule = await Schedule.findById(id);
+
   if (!schedule) {
     throw new ApiError(404, "Schedule not found");
   }
@@ -213,15 +268,31 @@ export const cancelSchedule = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Completed interviews cannot be cancelled");
   }
 
+  const requesterId = req.user._id.toString();
+  const interviewerId = schedule.interviewer.toString();
+  const intervieweeId = schedule.interviewee.toString();
+
+  const isParticipant =
+    requesterId === interviewerId || requesterId === intervieweeId;
+
+  if (!isParticipant) {
+    throw new ApiError(403, "You are not allowed to cancel this schedule");
+  }
+
   schedule.status = "cancelled";
   await schedule.save();
 
-  const cancelledSchedule = await Schedule.findById(schedule._id)
-    .populate("roomId", "roomCode title language")
-    .populate("interviewer", "username fullName email avatar")
-    .populate("interviewee", "username fullName email avatar");
+await Room.findByIdAndUpdate(schedule.room, {
+  status: "waiting",
+});
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, cancelledSchedule, "Interview cancelled successfully"));
+  const cancelledSchedule = await populateSchedule(schedule._id);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      cancelledSchedule,
+      "Interview schedule cancelled successfully"
+    )
+  );
 });

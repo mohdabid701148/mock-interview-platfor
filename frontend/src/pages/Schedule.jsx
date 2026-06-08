@@ -5,6 +5,7 @@ import {
   Clock,
   RefreshCcw,
   Video,
+  UserCheck,
 } from "lucide-react";
 
 import Sidebar from "../components/dashboard/Sidebar";
@@ -15,6 +16,7 @@ import InterviewCalendar from "../components/schedule/InterviewCalendar";
 
 import { roomService } from "../services/room.service";
 import { scheduleService } from "../services/schedule.service";
+import { useAuth } from "../hooks/useAuth";
 
 const getRoomsFromResponse = (res) => {
   const data = res?.data ?? res;
@@ -40,13 +42,28 @@ const getSchedulesFromResponse = (res) => {
   return [];
 };
 
+const getId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value?._id || value?.id || "";
+};
+
+const isSameId = (a, b) => {
+  return getId(a)?.toString() === getId(b)?.toString();
+};
+
 const Schedule = () => {
+  const { user } = useAuth();
+
   const [rooms, setRooms] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [scheduleCreating, setScheduleCreating] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState("");
   const [error, setError] = useState("");
+
+  const currentUserId = getId(user);
 
   const fetchData = useCallback(async () => {
     try {
@@ -91,8 +108,21 @@ const Schedule = () => {
   };
 
   const handleCreateSchedule = async (payload) => {
-    await scheduleService.createSchedule(payload);
-    await fetchData();
+    try {
+      setScheduleCreating(true);
+      setError("");
+
+      await scheduleService.createSchedule(payload);
+      await fetchData();
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to schedule interview"
+      );
+    } finally {
+      setScheduleCreating(false);
+    }
   };
 
   const handleStatusChange = async (scheduleId, status) => {
@@ -131,6 +161,25 @@ const Schedule = () => {
     }
   };
 
+  const schedulableSessions = useMemo(() => {
+    return rooms.filter((room) => {
+      const isInterviewer = isSameId(room?.interviewer, currentUserId);
+      const hasInterviewee = Boolean(room?.interviewee);
+      const isOpenStatus = ["waiting", "scheduled"].includes(room?.status);
+
+      return isInterviewer && hasInterviewee && isOpenStatus;
+    });
+  }, [rooms, currentUserId]);
+
+  const waitingForInterviewee = useMemo(() => {
+    return rooms.filter((room) => {
+      const isInterviewer = isSameId(room?.interviewer, currentUserId);
+      const hasInterviewee = Boolean(room?.interviewee);
+
+      return isInterviewer && !hasInterviewee && room?.status === "waiting";
+    });
+  }, [rooms, currentUserId]);
+
   const stats = useMemo(() => {
     const completed = schedules.filter(
       (schedule) => schedule?.status === "completed"
@@ -142,11 +191,12 @@ const Schedule = () => {
     ).length;
 
     return {
-      rooms: rooms.length,
+      availableSessions: schedulableSessions.length,
       upcoming,
       completed,
+      waitingForInterviewee: waitingForInterviewee.length,
     };
-  }, [rooms, schedules]);
+  }, [schedules, schedulableSessions, waitingForInterviewee]);
 
   if (loading) {
     return (
@@ -155,7 +205,10 @@ const Schedule = () => {
           <Sidebar />
 
           <main className="flex-1 px-6 py-6 lg:px-8">
-            <Navbar title="Schedule" subtitle="Loading your interview schedule" />
+            <Navbar
+              title="Schedule"
+              subtitle="Loading your interview schedule"
+            />
 
             <div className="mt-6 app-card rounded-3xl p-8 shadow-sm">
               <p className="text-sm app-text">Loading schedule data...</p>
@@ -174,7 +227,7 @@ const Schedule = () => {
         <main className="flex-1 px-6 py-6 lg:px-8">
           <Navbar
             title="Schedule"
-            subtitle="Schedule mock interviews and track upcoming sessions"
+            subtitle="Plan upcoming mock interview sessions"
           />
 
           {error && (
@@ -186,17 +239,18 @@ const Schedule = () => {
           <section className="mt-6 app-card rounded-3xl p-6 shadow-sm">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-[#1f1f1f] dark:text-gray-300">
+                <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
                   <CalendarDays size={16} />
-                  Scheduling System
+                  Interview Scheduling
                 </div>
 
                 <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
-                  Plan and manage mock interviews.
+                  Schedule structured mock interviews.
                 </h1>
 
-                <p className="mt-2 text-sm app-text">
-                  Create scheduled sessions, view upcoming interviews, and keep your preparation organized.
+                <p className="mt-2 max-w-2xl text-sm app-text">
+                  Choose an existing interview session, confirm its interviewer and interviewee,
+                  then set the date, duration, and agenda.
                 </p>
               </div>
 
@@ -206,12 +260,15 @@ const Schedule = () => {
                 disabled={refreshing}
                 className="app-btn-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <RefreshCcw size={17} className={refreshing ? "animate-spin" : ""} />
+                <RefreshCcw
+                  size={17}
+                  className={refreshing ? "animate-spin" : ""}
+                />
                 {refreshing ? "Refreshing..." : "Refresh"}
               </button>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid gap-4 md:grid-cols-4">
               <div className="app-panel rounded-2xl p-5">
                 <div className="flex items-center gap-4">
                   <div className="rounded-xl bg-white p-3 text-slate-700 shadow-sm dark:bg-[#171717] dark:text-gray-200">
@@ -219,9 +276,24 @@ const Schedule = () => {
                   </div>
 
                   <div>
-                    <p className="text-sm app-text">Available Rooms</p>
+                    <p className="text-sm app-text">Ready Sessions</p>
                     <h3 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">
-                      {stats.rooms}
+                      {stats.availableSessions}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <div className="app-panel rounded-2xl p-5">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-xl bg-white p-3 text-slate-700 shadow-sm dark:bg-[#171717] dark:text-gray-200">
+                    <UserCheck size={18} />
+                  </div>
+
+                  <div>
+                    <p className="text-sm app-text">Waiting Join</p>
+                    <h3 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">
+                      {stats.waitingForInterviewee}
                     </h3>
                   </div>
                 </div>
@@ -268,11 +340,15 @@ const Schedule = () => {
                   </h2>
 
                   <p className="mt-1 text-sm app-text">
-                    Select a room and create a mock interview session.
+                    Select a ready interview session. Roles are taken automatically from the session.
                   </p>
                 </div>
 
-                <ScheduleForm rooms={rooms} onCreate={handleCreateSchedule} />
+                <ScheduleForm
+                  rooms={schedulableSessions}
+                  onCreate={handleCreateSchedule}
+                  loading={scheduleCreating}
+                />
               </div>
 
               <div className="app-card rounded-3xl p-6 shadow-sm">
@@ -282,7 +358,7 @@ const Schedule = () => {
                   </h2>
 
                   <p className="mt-1 text-sm app-text">
-                    Track your scheduled interview sessions.
+                    Track your scheduled mock interview sessions.
                   </p>
                 </div>
 

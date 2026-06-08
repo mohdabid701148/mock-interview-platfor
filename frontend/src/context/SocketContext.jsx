@@ -1,65 +1,81 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 export const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
+    const [socket, setSocket] = useState(null);
+    const socketRef = useRef(null);
 
-  useEffect(() => {
-    let socketConnection = null;
+    useEffect(() => {
+        const SOCKET_URL =
+            import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
-    const connectSocket = () => {
-      const token = localStorage.getItem("accessToken");
+        const cleanupSocket = () => {
+            if (socketRef.current) {
+                socketRef.current.removeAllListeners();
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
 
-      if (!token || token === "undefined" || token === "null") {
-        console.log("No token found for socket");
-        setSocket(null);
-        return;
-      }
+            setSocket(null);
+        };
 
-      const SOCKET_URL =
-        import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+        const connectSocket = () => {
+            const token = localStorage.getItem("accessToken");
 
-      console.log("Connecting socket to:", SOCKET_URL);
+            cleanupSocket();
 
-      socketConnection = io(SOCKET_URL, {
-        withCredentials: true,
-        auth: {
-          token,
-        },
-      });
+            if (!token || token === "undefined" || token === "null") {
+                return;
+            }
 
-      setSocket(socketConnection);
+            const socketConnection = io(SOCKET_URL, {
+                withCredentials: true,
+                autoConnect: false,
+                reconnection: true,
+                reconnectionAttempts: Infinity,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 20000,
+                forceNew: true,
+                transports: ["websocket", "polling"],
+                auth: {
+                    token,
+                },
+            });
 
-      socketConnection.on("connect", () => {
-        console.log("Socket connected:", socketConnection.id);
-      });
+            socketRef.current = socketConnection;
+            setSocket(socketConnection);
 
-      socketConnection.on("connect_error", (error) => {
-        console.log("Socket connection failed:", error.message);
-        console.log("Socket error details:", error);
-      });
-    };
+            socketConnection.on("connect", () => {
+                console.log("Socket connected:", socketConnection.id);
+            });
 
-    connectSocket();
+            socketConnection.on("disconnect", (reason) => {
+                console.log("Socket disconnected:", reason);
+            });
 
-    window.addEventListener("auth-change", connectSocket);
+            socketConnection.on("connect_error", (error) => {
+                console.log("Socket connection failed:", error.message);
+            });
 
-    return () => {
-      window.removeEventListener("auth-change", connectSocket);
+            socketConnection.connect();
+        };
 
-      if (socketConnection) {
-        socketConnection.disconnect();
-      }
+        connectSocket();
 
-      setSocket(null);
-    };
-  }, []);
+        window.addEventListener("auth-change", connectSocket);
 
-  return (
-    <SocketContext.Provider value={{ socket }}>
-      {children}
-    </SocketContext.Provider>
-  );
+        return () => {
+            window.removeEventListener("auth-change", connectSocket);
+            cleanupSocket();
+        };
+    }, []);
+
+    return (
+        <SocketContext.Provider value={{ socket }}>
+            {children}
+        </SocketContext.Provider>
+    );
 };

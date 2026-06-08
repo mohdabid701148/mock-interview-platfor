@@ -1,21 +1,42 @@
 import { Mail, UserRound, Users } from "lucide-react";
 
+const getParticipantUser = (participant) => {
+  return participant?.user || participant;
+};
+
 const getParticipantName = (participant) => {
+  const user = getParticipantUser(participant);
+
   return (
+    user?.fullName ||
+    user?.username ||
+    user?.name ||
     participant?.username ||
     participant?.name ||
-    participant?.user?.username ||
-    participant?.user?.name ||
     "Unknown User"
   );
 };
 
 const getParticipantEmail = (participant) => {
-  return participant?.email || participant?.user?.email || "";
+  const user = getParticipantUser(participant);
+
+  return user?.email || participant?.email || "";
 };
 
 const getParticipantRole = (participant) => {
-  return participant?.role || participant?.user?.role || "Member";
+  return participant?.role || "member";
+};
+
+const getRoleClasses = (role) => {
+  if (role === "interviewer") {
+    return "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300";
+  }
+
+  if (role === "interviewee") {
+    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300";
+  }
+
+  return "bg-slate-200 text-slate-700 dark:bg-[#2a2a2a] dark:text-gray-300";
 };
 
 const ParticipantList = ({ participants = [] }) => {
@@ -28,7 +49,7 @@ const ParticipantList = ({ participants = [] }) => {
           </h3>
 
           <p className="mt-1 text-sm app-text">
-            People currently in this room
+            Interview roles and room members
           </p>
         </div>
 
@@ -48,19 +69,26 @@ const ParticipantList = ({ participants = [] }) => {
           </h4>
 
           <p className="mt-2 text-sm app-text">
-            Share the room code to invite someone.
+            Share the room code to invite an interviewee.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {participants.map((participant, index) => {
+            const user = getParticipantUser(participant);
             const name = getParticipantName(participant);
             const email = getParticipantEmail(participant);
             const role = getParticipantRole(participant);
 
             return (
               <div
-                key={participant?._id || participant?.id || participant?.user?._id || index}
+                key={
+                  participant?._id ||
+                  participant?.id ||
+                  user?._id ||
+                  user?.id ||
+                  index
+                }
                 className="app-panel flex items-center justify-between gap-4 rounded-2xl px-5 py-4"
               >
                 <div className="flex min-w-0 items-center gap-4">
@@ -86,7 +114,11 @@ const ParticipantList = ({ participants = [] }) => {
                   </div>
                 </div>
 
-                <span className="shrink-0 rounded-full bg-slate-200 px-3 py-1 text-xs font-medium capitalize text-slate-700 dark:bg-[#2a2a2a] dark:text-gray-300">
+                <span
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium capitalize ${getRoleClasses(
+                    role
+                  )}`}
+                >
                   {role}
                 </span>
               </div>

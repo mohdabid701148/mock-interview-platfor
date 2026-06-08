@@ -1,19 +1,33 @@
 import { Room } from "../models/room.model.js";
+import { Schedule } from "../models/Schedule.model.js";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+const populateRoom = async (roomId) => {
+  return await Room.findById(roomId)
+    .populate("createdBy", "username email fullName")
+    .populate("interviewer", "username email fullName")
+    .populate("interviewee", "username email fullName")
+    .populate("participants.user", "username email fullName");
+};
 
-// CREATE ROOM
+const isRoomParticipant = (room, userId) => {
+  return room.participants.some(
+    (participant) =>
+      participant.user.toString() === userId.toString()
+  );
+};
+
 export const createRoom = asyncHandler(async (req, res) => {
   const {
     title,
-    language = "JavaScript",
-    maxParticipants = 5,
+    language = "javascript",
+    meetingLink = "",
   } = req.body;
 
-  if (!title) {
+  if (!title?.trim()) {
     throw new ApiError(400, "Room title is required");
   }
 
@@ -22,7 +36,6 @@ export const createRoom = asyncHandler(async (req, res) => {
 
   do {
     roomCode = generateRoomCode();
-
     existingRoom = await Room.findOne({ roomCode });
   } while (existingRoom);
 
@@ -30,30 +43,34 @@ export const createRoom = asyncHandler(async (req, res) => {
     roomCode,
     title,
     createdBy: req.user._id,
-    participants: [req.user._id],
+    interviewer: req.user._id,
+    interviewee: null,
+    participants: [
+      {
+        user: req.user._id,
+        role: "interviewer",
+      },
+    ],
     language,
-    maxParticipants,
+    meetingLink,
+    maxParticipants: 2,
   });
 
-  const createdRoom = await Room.findById(room._id)
-    .populate("createdBy", "username email")
-    .populate("participants", "username email");
+  const createdRoom = await populateRoom(room._id);
 
   return res.status(201).json(
     new ApiResponse(
       201,
       createdRoom,
-      "Room created successfully"
+      "Interview room created successfully"
     )
   );
 });
 
-
-// JOIN ROOM
 export const joinRoom = asyncHandler(async (req, res) => {
   const { roomCode } = req.body;
 
-  if (!roomCode) {
+  if (!roomCode?.trim()) {
     throw new ApiError(400, "Room code is required");
   }
 
@@ -65,38 +82,56 @@ export const joinRoom = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Room not found");
   }
 
-  const alreadyJoined = room.participants.some(
-    (participant) =>
-      participant.toString() === req.user._id.toString()
-  );
+  if (room.status === "completed") {
+    throw new ApiError(400, "This interview is already completed");
+  }
+
+  if (room.status === "cancelled") {
+    throw new ApiError(400, "This interview is cancelled");
+  }
+
+  if (room.status === "active") {
+    throw new ApiError(400, "This interview has already started");
+  }
+
+  const alreadyJoined = isRoomParticipant(room, req.user._id);
 
   if (alreadyJoined) {
     throw new ApiError(400, "You already joined this room");
   }
 
-  if (room.participants.length >= room.maxParticipants) {
+  if (room.interviewer.toString() === req.user._id.toString()) {
+    throw new ApiError(400, "Interviewer cannot join as interviewee");
+  }
+
+  if (room.interviewee) {
+    throw new ApiError(400, "This room already has an interviewee");
+  }
+
+  if (room.participants.length >= 2) {
     throw new ApiError(400, "Room is full");
   }
 
-  room.participants.push(req.user._id);
+  room.interviewee = req.user._id;
+
+  room.participants.push({
+    user: req.user._id,
+    role: "interviewee",
+  });
 
   await room.save();
 
-  const updatedRoom = await Room.findById(room._id)
-    .populate("createdBy", "username email")
-    .populate("participants", "username email");
+  const updatedRoom = await populateRoom(room._id);
 
   return res.status(200).json(
     new ApiResponse(
       200,
       updatedRoom,
-      "Joined room successfully"
+      "Joined interview room successfully"
     )
   );
 });
 
-
-// LEAVE ROOM
 export const leaveRoom = asyncHandler(async (req, res) => {
   const { roomId } = req.params;
 
@@ -106,21 +141,73 @@ export const leaveRoom = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Room not found");
   }
 
-  room.participants = room.participants.filter(
-    (participant) =>
-      participant.toString() !== req.user._id.toString()
-  );
+  if (!isRoomParticipant(room, req.user._id)) {
+    throw new ApiError(403, "You are not a participant of this room");
+  }
 
-  if (room.participants.length === 0) {
-    await room.deleteOne();
+  if (room.status === "completed") {
+    throw new ApiError(400, "Completed interview cannot be left");
+  }
+
+  if (room.status === "active") {
+    throw new ApiError(
+      400,
+      "Active interview cannot be left. End the interview first"
+    );
+  }
+
+  const isInterviewer =
+    room.interviewer.toString() === req.user._id.toString();
+
+  const isInterviewee =
+    room.interviewee &&
+    room.interviewee.toString() === req.user._id.toString();
+
+  if (isInterviewer) {
+    room.status = "cancelled";
+
+    await room.save();
+
+    await Schedule.findOneAndUpdate(
+      {
+        room: room._id,
+        status: "scheduled",
+      },
+      {
+        status: "cancelled",
+      }
+    );
 
     return res.status(200).json(
       new ApiResponse(
         200,
         {},
-        "Room deleted because no participants left"
+        "Interview cancelled because interviewer left"
       )
     );
+  }
+
+  room.participants = room.participants.filter(
+    (participant) =>
+      participant.user.toString() !== req.user._id.toString()
+  );
+
+  if (isInterviewee) {
+    room.interviewee = null;
+
+    await Schedule.findOneAndUpdate(
+      {
+        room: room._id,
+        status: "scheduled",
+      },
+      {
+        status: "cancelled",
+      }
+    );
+
+    if (room.status === "scheduled") {
+      room.status = "waiting";
+    }
   }
 
   await room.save();
@@ -129,24 +216,33 @@ export const leaveRoom = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {},
-      "Left room successfully"
+      "Left interview room successfully"
     )
   );
 });
 
-
-// GET ROOM DETAILS
 export const getRoomDetails = asyncHandler(async (req, res) => {
   const { roomCode } = req.params;
 
   const room = await Room.findOne({
     roomCode: roomCode.toUpperCase(),
   })
-    .populate("createdBy", "username email")
-    .populate("participants", "username email");
+    .populate("createdBy", "username email fullName")
+    .populate("interviewer", "username email fullName")
+    .populate("interviewee", "username email fullName")
+    .populate("participants.user", "username email fullName");
 
   if (!room) {
     throw new ApiError(404, "Room not found");
+  }
+
+  const isParticipant = room.participants.some(
+    (participant) =>
+      participant.user._id.toString() === req.user._id.toString()
+  );
+
+  if (!isParticipant) {
+    throw new ApiError(403, "You are not a participant of this room");
   }
 
   return res.status(200).json(
@@ -158,15 +254,15 @@ export const getRoomDetails = asyncHandler(async (req, res) => {
   );
 });
 
-
-// GET USER ROOMS
 export const getUserRooms = asyncHandler(async (req, res) => {
   const rooms = await Room.find({
-  participants: req.user._id,
-  status: { $ne: "completed" },
-})
-    .populate("createdBy", "username email")
-    .populate("participants", "username email")
+    "participants.user": req.user._id,
+    status: { $nin: ["completed", "cancelled"] },
+  })
+    .populate("createdBy", "username email fullName")
+    .populate("interviewer", "username email fullName")
+    .populate("interviewee", "username email fullName")
+    .populate("participants.user", "username email fullName")
     .sort({ createdAt: -1 });
 
   return res.status(200).json(
@@ -178,7 +274,6 @@ export const getUserRooms = asyncHandler(async (req, res) => {
   );
 });
 
-// START INTERVIEW
 export const startRoom = asyncHandler(async (req, res) => {
   const { roomId } = req.params;
 
@@ -188,13 +283,12 @@ export const startRoom = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Room not found");
   }
 
-  const isParticipant = room.participants.some(
-    (participant) =>
-      participant.toString() === req.user._id.toString()
-  );
+  if (room.interviewer.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Only interviewer can start the interview");
+  }
 
-  if (!isParticipant) {
-    throw new ApiError(403, "You are not a participant of this room");
+  if (!room.interviewee) {
+    throw new ApiError(400, "Interviewee has not joined yet");
   }
 
   if (room.status === "active") {
@@ -205,13 +299,16 @@ export const startRoom = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Completed interview cannot be started again");
   }
 
+  if (room.status === "cancelled") {
+    throw new ApiError(400, "Cancelled interview cannot be started");
+  }
+
   room.status = "active";
+  room.startedAt = room.startedAt || new Date();
 
   await room.save();
 
-  const updatedRoom = await Room.findById(room._id)
-    .populate("createdBy", "username email")
-    .populate("participants", "username email");
+  const updatedRoom = await populateRoom(room._id);
 
   return res.status(200).json(
     new ApiResponse(
@@ -222,8 +319,6 @@ export const startRoom = asyncHandler(async (req, res) => {
   );
 });
 
-
-// COMPLETE INTERVIEW
 export const completeRoom = asyncHandler(async (req, res) => {
   const { roomId } = req.params;
 
@@ -233,13 +328,8 @@ export const completeRoom = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Room not found");
   }
 
-  const isParticipant = room.participants.some(
-    (participant) =>
-      participant.toString() === req.user._id.toString()
-  );
-
-  if (!isParticipant) {
-    throw new ApiError(403, "You are not a participant of this room");
+  if (room.interviewer.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Only interviewer can complete the interview");
   }
 
   if (room.status !== "active") {
@@ -247,12 +337,21 @@ export const completeRoom = asyncHandler(async (req, res) => {
   }
 
   room.status = "completed";
+  room.completedAt = new Date();
 
   await room.save();
 
-  const updatedRoom = await Room.findById(room._id)
-    .populate("createdBy", "username email")
-    .populate("participants", "username email");
+  await Schedule.findOneAndUpdate(
+    {
+      room: room._id,
+      status: "scheduled",
+    },
+    {
+      status: "completed",
+    }
+  );
+
+  const updatedRoom = await populateRoom(room._id);
 
   return res.status(200).json(
     new ApiResponse(

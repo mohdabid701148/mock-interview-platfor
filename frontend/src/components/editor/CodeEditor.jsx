@@ -2,13 +2,28 @@ import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import LanguageSelector from "./LanguageSelector";
 import { useSocket } from "../../hooks/useSocket";
-import { useDebounce } from "../../hooks/useDebounce";
 
 const starterCode = {
   javascript: `function solution() {\n  \n}`,
+  typescript: `function solution(): void {\n  \n}`,
   python: `def solution():\n    pass`,
-  cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    return 0;\n}`,
   java: `class Main {\n    public static void main(String[] args) {\n        \n    }\n}`,
+  cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    return 0;\n}`,
+};
+
+const fileExtensions = {
+  javascript: "js",
+  typescript: "ts",
+  python: "py",
+  java: "java",
+  cpp: "cpp",
+};
+
+const normalizeCodeByLanguage = (value = {}) => {
+  return {
+    ...starterCode,
+    ...value,
+  };
 };
 
 const CodeEditor = ({ roomId, disabled = false }) => {
@@ -18,104 +33,156 @@ const CodeEditor = ({ roomId, disabled = false }) => {
   const [codeByLanguage, setCodeByLanguage] = useState(starterCode);
   const [code, setCode] = useState(starterCode.javascript);
 
-  const debouncedCode = useDebounce(code, 300);
+  const languageRef = useRef("javascript");
+  const codeRef = useRef(starterCode.javascript);
+  const codeByLanguageRef = useRef(starterCode);
+  const debounceTimerRef = useRef(null);
+  const isApplyingRemoteRef = useRef(false);
 
-  const isRemoteChange = useRef(false);
-  const isInitialMount = useRef(true);
+  const clearDebounce = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+  };
+
+  const updateLocalState = (nextLanguage, nextCodeByLanguage) => {
+    const normalizedCodeByLanguage = normalizeCodeByLanguage(nextCodeByLanguage);
+    const nextCode =
+      normalizedCodeByLanguage[nextLanguage] ||
+      starterCode[nextLanguage] ||
+      "";
+
+    languageRef.current = nextLanguage;
+    codeRef.current = nextCode;
+    codeByLanguageRef.current = normalizedCodeByLanguage;
+
+    setLanguage(nextLanguage);
+    setCodeByLanguage(normalizedCodeByLanguage);
+    setCode(nextCode);
+  };
 
   useEffect(() => {
     if (!socket || !roomId) {
       return;
     }
 
-    socket.emit("editor-join", { roomId });
-
     const handleCodeUpdate = ({ language: incomingLanguage, code: incomingCode }) => {
-      isRemoteChange.current = true;
-
-      setCodeByLanguage((prev) => ({
-        ...prev,
-        [incomingLanguage || language]: incomingCode,
-      }));
-
-      if (!incomingLanguage || incomingLanguage === language) {
-        setCode(incomingCode);
+      if (!incomingLanguage) {
+        return;
       }
+
+      isApplyingRemoteRef.current = true;
+
+      const nextCodeByLanguage = {
+        ...codeByLanguageRef.current,
+        [incomingLanguage]: incomingCode || "",
+      };
+
+      codeByLanguageRef.current = nextCodeByLanguage;
+      setCodeByLanguage(nextCodeByLanguage);
+
+      if (incomingLanguage === languageRef.current) {
+        codeRef.current = incomingCode || "";
+        setCode(incomingCode || "");
+      }
+
+      setTimeout(() => {
+        isApplyingRemoteRef.current = false;
+      }, 0);
     };
 
     const handleLanguageUpdate = ({
       language: incomingLanguage,
       codeByLanguage: incomingCodeByLanguage,
     }) => {
-      isRemoteChange.current = true;
+      if (!incomingLanguage) {
+        return;
+      }
 
-      const nextCodeByLanguage = incomingCodeByLanguage || starterCode;
-      const nextCode =
-        nextCodeByLanguage[incomingLanguage] ||
-        starterCode[incomingLanguage] ||
-        "";
+      clearDebounce();
 
-      setLanguage(incomingLanguage);
-      setCodeByLanguage(nextCodeByLanguage);
-      setCode(nextCode);
+      isApplyingRemoteRef.current = true;
+
+      const nextLanguage = starterCode[incomingLanguage]
+        ? incomingLanguage
+        : "javascript";
+
+      const nextCodeByLanguage = normalizeCodeByLanguage(incomingCodeByLanguage);
+
+      updateLocalState(nextLanguage, nextCodeByLanguage);
+
+      setTimeout(() => {
+        isApplyingRemoteRef.current = false;
+      }, 0);
     };
+
+    socket.emit("editor-join", { roomId });
 
     socket.on("code-update", handleCodeUpdate);
     socket.on("language-update", handleLanguageUpdate);
 
     return () => {
+      clearDebounce();
       socket.off("code-update", handleCodeUpdate);
       socket.off("language-update", handleLanguageUpdate);
     };
-  }, [socket, roomId, language]);
-
-  useEffect(() => {
-    if (!socket || !roomId) {
-      return;
-    }
-
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    if (isRemoteChange.current) {
-      isRemoteChange.current = false;
-      return;
-    }
-
-    socket.emit("code-change", {
-      roomId,
-      language,
-      code: debouncedCode,
-    });
-  }, [debouncedCode, socket, roomId, language]);
+  }, [socket, roomId]);
 
   const handleCodeChange = (value) => {
+    if (isApplyingRemoteRef.current || disabled) {
+      return;
+    }
+
     const newCode = value || "";
+    const editLanguage = languageRef.current;
+
+    const nextCodeByLanguage = {
+      ...codeByLanguageRef.current,
+      [editLanguage]: newCode,
+    };
+
+    codeRef.current = newCode;
+    codeByLanguageRef.current = nextCodeByLanguage;
 
     setCode(newCode);
+    setCodeByLanguage(nextCodeByLanguage);
 
-    setCodeByLanguage((prev) => ({
-      ...prev,
-      [language]: newCode,
-    }));
+    clearDebounce();
+
+    debounceTimerRef.current = setTimeout(() => {
+      if (!socket || !roomId) {
+        return;
+      }
+
+      socket.emit("code-change", {
+        roomId,
+        language: editLanguage,
+        code: newCode,
+      });
+    }, 350);
   };
 
   const handleLanguageChange = (newLanguage) => {
-    const nextCode =
-      codeByLanguage[newLanguage] ||
-      starterCode[newLanguage] ||
-      "";
+    if (!newLanguage || newLanguage === languageRef.current || disabled) {
+      return;
+    }
+
+    clearDebounce();
+
+    const oldLanguage = languageRef.current;
+    const oldCode = codeRef.current;
 
     const nextCodeByLanguage = {
-      ...codeByLanguage,
-      [language]: code,
+      ...codeByLanguageRef.current,
+      [oldLanguage]: oldCode,
     };
 
-    setLanguage(newLanguage);
-    setCodeByLanguage(nextCodeByLanguage);
-    setCode(nextCode);
+    if (!nextCodeByLanguage[newLanguage]) {
+      nextCodeByLanguage[newLanguage] = starterCode[newLanguage] || "";
+    }
+
+    updateLocalState(newLanguage, nextCodeByLanguage);
 
     if (socket && roomId) {
       socket.emit("language-change", {
@@ -135,7 +202,7 @@ const CodeEditor = ({ roomId, disabled = false }) => {
           </h2>
 
           <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
-            Code changes sync live with everyone in this room.
+            Code and language changes sync live with everyone in this session.
           </p>
         </div>
 
@@ -146,6 +213,7 @@ const CodeEditor = ({ roomId, disabled = false }) => {
         <Editor
           height="100%"
           language={language}
+          path={`${roomId}-${language}.${fileExtensions[language] || "txt"}`}
           value={code}
           theme="vs-dark"
           onChange={handleCodeChange}
@@ -156,6 +224,9 @@ const CodeEditor = ({ roomId, disabled = false }) => {
             wordWrap: "on",
             automaticLayout: true,
             scrollBeyondLastLine: false,
+            tabSize: 4,
+            insertSpaces: true,
+            detectIndentation: false,
           }}
         />
       </div>
