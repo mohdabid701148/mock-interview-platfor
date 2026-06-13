@@ -1,6 +1,7 @@
 import { Feedback } from "../models/Feedback.model.js";
 import { Room } from "../models/room.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { createNotification } from "../utils/notificationHelper.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -91,6 +92,14 @@ export const submitFeedback = asyncHandler(async (req, res) => {
     recommendation,
   });
 
+  // Notify the interviewee
+  await createNotification(
+    feedback.interviewee,
+    "Feedback Received",
+    `Your feedback for "${room.title}" is now available.`,
+    "feedback"
+  );
+
   return res.status(201).json(
     new ApiResponse(
       201,
@@ -147,7 +156,7 @@ export const getMyFeedbacks = asyncHandler(async (req, res) => {
   const feedbacks = await Feedback.find({
     $or: [{ interviewer: userId }, { interviewee: userId }],
   })
-    .populate("room", "title roomCode language completedAt startedAt")
+    .populate("room", "title roomCode language completedAt startedAt codeState")
     .populate("interviewer", "username email fullName avatar")
     .populate("interviewee", "username email fullName avatar")
     .sort({ createdAt: -1 });

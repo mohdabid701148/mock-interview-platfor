@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes.js";
 import scheduleRouter from "./routes/schedule.routes.js"
 import roomRoutes from "./routes/room.routes.js";
 import feedbackRoutes from "./routes/feedback.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
 import { ApiError } from "./utils/ApiError.js";
 
 const app = express();
@@ -42,6 +43,8 @@ app.use("/api/v1/rooms", roomRoutes);
 app.use("/api/v1/schedule", scheduleRouter);
 
 app.use("/api/v1/feedback", feedbackRoutes);
+
+app.use("/api/v1/notifications", notificationRoutes);
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));

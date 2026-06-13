@@ -4,6 +4,22 @@ import { User } from "../models/User.model.js";
 import { registerRoomSocketHandlers } from "../sockets/room.socket.js";
 import { registerEditorSocketHandlers } from "../sockets/editor.socket.js";
 
+const userSocketRegistry = new Map(); // Map<userIdString, Set<socketIdString>>
+let ioInstance = null;
+
+export const getSocketsByUserId = (userId) => {
+  if (!userId) return new Set();
+  return userSocketRegistry.get(userId.toString()) || new Set();
+};
+
+export const emitToUser = (userId, eventName, data) => {
+  if (!ioInstance || !userId) return;
+  const socketIds = getSocketsByUserId(userId);
+  socketIds.forEach((socketId) => {
+    ioInstance.to(socketId).emit(eventName, data);
+  });
+};
+
 const getAllowedOrigins = () => {
   const origins = process.env.CORS_ORIGIN || "http://localhost:5173";
 
@@ -61,14 +77,33 @@ export const initializeSocket = (server) => {
     }
   });
 
+  ioInstance = io;
+
   io.on("connection", (socket) => {
+    const userId = socket.user?._id?.toString();
+    if (userId) {
+      if (!userSocketRegistry.has(userId)) {
+        userSocketRegistry.set(userId, new Set());
+      }
+      userSocketRegistry.get(userId).add(socket.id);
+      console.log(`Registered socket ${socket.id} for user ${userId}`);
+    }
+
     console.log("Socket connected:", {
       socketId: socket.id,
-      userId: socket.user?._id?.toString(),
+      userId,
       username: socket.user?.username,
     });
 
     socket.on("disconnect", (reason) => {
+      if (userId && userSocketRegistry.has(userId)) {
+        userSocketRegistry.get(userId).delete(socket.id);
+        if (userSocketRegistry.get(userId).size === 0) {
+          userSocketRegistry.delete(userId);
+        }
+        console.log(`Unregistered socket ${socket.id} for user ${userId}`);
+      }
+
       console.log("Socket disconnected:", {
         socketId: socket.id,
         reason,

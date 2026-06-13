@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Bell,
   Plus,
   Search,
   ChevronDown,
@@ -10,6 +9,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
+import NotificationBell from "./NotificationBell";
 
 const Navbar = ({
   title = "Dashboard",
@@ -106,30 +106,7 @@ const Navbar = ({
           />
         </div>
 
-        <button
-          className="
-            relative
-            flex
-            h-11
-            w-11
-            items-center
-            justify-center
-            rounded-xl
-            border
-            border-slate-200
-            bg-white
-            text-slate-600
-            transition
-            hover:bg-slate-100
-            dark:border-[#2a2a2a]
-            dark:bg-[#1f1f1f]
-            dark:text-gray-300
-            dark:hover:bg-[#262626]
-          "
-        >
-          <Bell size={18} />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
-        </button>
+        <NotificationBell />
 
         {onCreateRoom && (
           <button

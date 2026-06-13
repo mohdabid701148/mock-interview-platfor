@@ -1,5 +1,6 @@
 import { Room } from "../models/room.model.js";
 import { Schedule } from "../models/Schedule.model.js";
+import { createNotification } from "../utils/notificationHelper.js";
 import { getEditorState, clearEditorState } from "../sockets/editor.socket.js";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -179,6 +180,16 @@ export const leaveRoom = asyncHandler(async (req, res) => {
       }
     );
 
+    // Notify interviewee if set
+    if (room.interviewee) {
+      await createNotification(
+        room.interviewee,
+        "Interview Cancelled",
+        `The interview "${room.title}" has been cancelled because the interviewer left.`,
+        "cancel"
+      );
+    }
+
     return res.status(200).json(
       new ApiResponse(
         200,
@@ -209,6 +220,14 @@ export const leaveRoom = asyncHandler(async (req, res) => {
     if (room.status === "scheduled") {
       room.status = "waiting";
     }
+
+    // Notify interviewer
+    await createNotification(
+      room.interviewer,
+      "Interview Cancelled",
+      `The interview "${room.title}" has been cancelled because the interviewee left.`,
+      "cancel"
+    );
   }
 
   await room.save();
@@ -363,6 +382,22 @@ export const completeRoom = asyncHandler(async (req, res) => {
       status: "completed",
     }
   );
+
+  // Notify both participants
+  await createNotification(
+    room.interviewer,
+    "Interview Completed",
+    `The interview session "${room.title}" has been completed successfully.`,
+    "complete"
+  );
+  if (room.interviewee) {
+    await createNotification(
+      room.interviewee,
+      "Interview Completed",
+      `The interview session "${room.title}" has been completed successfully.`,
+      "complete"
+    );
+  }
 
   const updatedRoom = await populateRoom(room._id);
 

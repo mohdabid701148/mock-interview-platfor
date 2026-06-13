@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Schedule } from "../models/Schedule.model.js";
 import { Room } from "../models/room.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { createNotification } from "../utils/notificationHelper.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -158,6 +159,27 @@ export const createSchedule = asyncHandler(async (req, res) => {
 
   const populatedSchedule = await populateSchedule(schedule._id);
 
+  const formattedDate = new Date(populatedSchedule.scheduledAt).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+  }) + " at " + new Date(populatedSchedule.scheduledAt).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  await createNotification(
+    populatedSchedule.interviewer._id,
+    "Interview Scheduled",
+    `Your interview "${populatedSchedule.room.title}" has been scheduled for ${formattedDate}.`,
+    "schedule"
+  );
+  await createNotification(
+    populatedSchedule.interviewee._id,
+    "Interview Scheduled",
+    `Your interview "${populatedSchedule.room.title}" has been scheduled for ${formattedDate}.`,
+    "schedule"
+  );
+
   return res.status(201).json(
     new ApiResponse(
       201,
@@ -242,6 +264,34 @@ export const updateScheduleStatus = asyncHandler(async (req, res) => {
 
   const updatedSchedule = await populateSchedule(schedule._id);
 
+  if (status === "cancelled") {
+    await createNotification(
+      updatedSchedule.interviewer._id,
+      "Interview Cancelled",
+      `The interview "${updatedSchedule.room.title}" has been cancelled.`,
+      "cancel"
+    );
+    await createNotification(
+      updatedSchedule.interviewee._id,
+      "Interview Cancelled",
+      `The interview "${updatedSchedule.room.title}" has been cancelled.`,
+      "cancel"
+    );
+  } else if (status === "completed") {
+    await createNotification(
+      updatedSchedule.interviewer._id,
+      "Interview Completed",
+      "The interview session has been completed successfully.",
+      "complete"
+    );
+    await createNotification(
+      updatedSchedule.interviewee._id,
+      "Interview Completed",
+      "The interview session has been completed successfully.",
+      "complete"
+    );
+  }
+
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -287,6 +337,19 @@ await Room.findByIdAndUpdate(schedule.room, {
 });
 
   const cancelledSchedule = await populateSchedule(schedule._id);
+
+  await createNotification(
+    cancelledSchedule.interviewer._id,
+    "Interview Cancelled",
+    `The interview "${cancelledSchedule.room.title}" has been cancelled.`,
+    "cancel"
+  );
+  await createNotification(
+    cancelledSchedule.interviewee._id,
+    "Interview Cancelled",
+    `The interview "${cancelledSchedule.room.title}" has been cancelled.`,
+    "cancel"
+  );
 
   return res.status(200).json(
     new ApiResponse(
