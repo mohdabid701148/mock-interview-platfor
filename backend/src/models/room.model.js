@@ -112,6 +112,12 @@ const roomSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    codeState: {
+      type: Map,
+      of: String,
+      default: {},
+    },
   },
   {
     timestamps: true,

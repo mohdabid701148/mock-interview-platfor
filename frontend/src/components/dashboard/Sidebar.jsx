@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   Video,
   CalendarDays,
-  BarChart3,
+  History,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -76,9 +76,9 @@ const Sidebar = () => {
             Schedule
           </NavLink>
 
-          <NavLink to="/analytics" className={linkClass}>
-            <BarChart3 size={18} />
-            Analytics
+          <NavLink to="/history" className={linkClass}>
+            <History size={18} />
+            History
           </NavLink>
 
           <button

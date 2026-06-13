@@ -12,12 +12,19 @@ import {
   Video,
   UserCheck,
   ShieldCheck,
+  Star,
+  Award,
+  AlertCircle,
+  MessageSquare,
+  Sparkles,
+  Clock3,
 } from "lucide-react";
 
 import Sidebar from "../components/dashboard/Sidebar";
 import Navbar from "../components/dashboard/Navbar";
 import ParticipantList from "../components/rooms/ParticipantList";
 import { roomService } from "../services/room.service";
+import { feedbackService } from "../services/feedback.service";
 import { useSocket } from "../hooks/useSocket";
 import { useAuth } from "../hooks/useAuth";
 import CodeEditor from "../components/editor/CodeEditor";
@@ -69,6 +76,96 @@ const getRoleClasses = (role) => {
   }
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "--";
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+};
+
+const renderStarRating = (value) => {
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          size={16}
+          className={
+            star <= value
+              ? "fill-amber-400 text-amber-400"
+              : "text-slate-200 dark:text-gray-700"
+          }
+        />
+      ))}
+    </div>
+  );
+};
+
+const RatingInput = ({ label, description, value, onChange }) => {
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-slate-50 p-4 transition duration-200 dark:border-[#2a2a2a] dark:bg-[#1a1a1a] sm:flex-row sm:items-center sm:justify-between">
+      <div className="max-w-md">
+        <h4 className="font-semibold text-slate-800 dark:text-gray-200 text-sm">
+          {label}
+        </h4>
+        <p className="text-xs text-slate-550 dark:text-gray-450">
+          {description}
+        </p>
+      </div>
+      <div className="flex gap-1.5 mt-2 sm:mt-0">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            type="button"
+            key={star}
+            onClick={() => onChange(star)}
+            className="p-1 transition-all hover:scale-110 active:scale-95 cursor-pointer"
+          >
+            <Star
+              size={24}
+              className={
+                star <= value
+                  ? "fill-amber-400 text-amber-400"
+                  : "text-slate-300 hover:text-amber-300 dark:text-gray-650"
+              }
+            />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const getRecommendationBadge = (rec) => {
+  switch (rec) {
+    case "strong_hire":
+      return {
+        text: "Strong Hire",
+        classes: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20",
+      };
+    case "hire":
+      return {
+        text: "Hire",
+        classes: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20",
+      };
+    case "leaning_no_hire":
+      return {
+        text: "Leaning No Hire",
+        classes: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20",
+      };
+    case "no_hire":
+      return {
+        text: "No Hire",
+        classes: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20",
+      };
+    default:
+      return {
+        text: rec,
+        classes: "bg-slate-100 text-slate-800 border-slate-200 dark:bg-[#2a2a2a] dark:text-gray-300 dark:border-[#3a3a3a]",
+      };
+  }
+};
+
 const Room = () => {
   const { roomCode } = useParams();
   const navigate = useNavigate();
@@ -81,6 +178,25 @@ const Room = () => {
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
   const [socketStatus, setSocketStatus] = useState("connecting");
+
+  // Feedback & Evaluation States
+  const [feedback, setFeedback] = useState(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackScores, setFeedbackScores] = useState({
+    codingSkills: 0,
+    problemSolving: 0,
+    communication: 0,
+    dsaKnowledge: 0,
+    codeQuality: 0,
+    debugging: 0,
+    speed: 0,
+    overallRating: 0,
+  });
+  const [technicalComments, setTechnicalComments] = useState("");
+  const [behavioralComments, setBehavioralComments] = useState("");
+  const [generalFeedback, setGeneralFeedback] = useState("");
+  const [recommendation, setRecommendation] = useState("hire");
 
   const participants = useMemo(() => {
     return Array.isArray(room?.participants) ? room.participants : [];
@@ -139,6 +255,67 @@ const Room = () => {
       loadRoom();
     }
   }, [roomCode]);
+
+  const loadFeedback = async () => {
+    if (!socketRoomId) return;
+    try {
+      setFeedbackLoading(true);
+      const res = await feedbackService.getFeedbackForRoom(socketRoomId);
+      setFeedback(res?.data || res);
+    } catch (error) {
+      console.log("Feedback not submitted yet or failed to fetch.");
+      setFeedback(null);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault();
+    const missing = Object.keys(feedbackScores).some(
+      (key) => feedbackScores[key] === 0
+    );
+    if (missing) {
+      setMessage("Please rate all 8 scoring dimensions before submitting.");
+      return;
+    }
+    if (!generalFeedback.trim()) {
+      setMessage("Please write a general feedback summary.");
+      return;
+    }
+    if (!recommendation) {
+      setMessage("Please choose a hiring recommendation.");
+      return;
+    }
+    try {
+      setSubmittingFeedback(true);
+      setMessage("");
+      const res = await feedbackService.submitFeedback({
+        roomId: socketRoomId,
+        scores: feedbackScores,
+        comments: {
+          technicalComments,
+          behavioralComments,
+          generalFeedback,
+        },
+        recommendation,
+      });
+      setFeedback(res?.data || res);
+      setMessage("");
+    } catch (error) {
+      setMessage(
+        error?.response?.data?.message || "Failed to submit feedback"
+      );
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
+  useEffect(() => {
+    if (roomStatus === "completed") {
+      loadFeedback();
+    }
+  }, [roomStatus, socketRoomId]);
 
   useEffect(() => {
   if (!socket || !socketRoomId || !room) {
@@ -573,8 +750,293 @@ const Room = () => {
           )}
 
           {roomStatus === "completed" && (
-            <div className="mt-6 rounded-3xl border border-slate-200 bg-white px-6 py-5 text-sm text-slate-600 dark:border-[#2a2a2a] dark:bg-[#171717] dark:text-gray-400">
-              This interview is completed. The editor is locked. Feedback will be available in the next phase.
+            <div className="mt-6">
+              {feedbackLoading ? (
+                <div className="app-card rounded-3xl p-8 text-center text-sm app-text">
+                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-slate-500 border-t-transparent dark:border-white"></div>
+                  <p className="mt-2">Loading post-interview evaluation report...</p>
+                </div>
+              ) : feedback ? (
+                // Beautiful Scorecard View
+                <div className="app-card rounded-3xl p-8 shadow-sm">
+                  <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b border-slate-100 pb-6 dark:border-[#2a2a2a]">
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-[#1f1f1f] dark:text-gray-400">
+                        <Award size={14} />
+                        Evaluation Scorecard
+                      </div>
+                      <h2 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
+                        Mock Interview Feedback
+                      </h2>
+                      <p className="text-sm app-text mt-1">
+                        Completed on {formatDateTime(room?.completedAt)}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-start md:items-end gap-2">
+                      <span className="text-xs uppercase tracking-wider text-slate-400 dark:text-gray-500 font-bold">
+                        Hiring Recommendation
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-bold capitalize ${
+                          getRecommendationBadge(feedback.recommendation).classes
+                        }`}
+                      >
+                        <Sparkles size={15} />
+                        {getRecommendationBadge(feedback.recommendation).text}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 grid gap-8 lg:grid-cols-12">
+                    {/* Left Column: Numeric metrics grid */}
+                    <div className="lg:col-span-5 space-y-4">
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-gray-200">
+                        Performance Breakdown
+                      </h3>
+                      <div className="space-y-3">
+                        {[
+                          { key: "codingSkills", label: "Coding Skills" },
+                          { key: "problemSolving", label: "Problem Solving" },
+                          { key: "communication", label: "Communication" },
+                          { key: "dsaKnowledge", label: "DSA Knowledge" },
+                          { key: "codeQuality", label: "Code Quality" },
+                          { key: "debugging", label: "Debugging" },
+                          { key: "speed", label: "Speed / Pacing" },
+                          { key: "overallRating", label: "Overall Rating" },
+                        ].map((dim) => (
+                          <div
+                            key={dim.key}
+                            className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-[#1f1f1f] border border-slate-100 dark:border-[#2a2a2a]/30"
+                          >
+                            <span className="text-sm font-medium text-slate-700 dark:text-gray-300">
+                              {dim.label}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {renderStarRating(feedback.scores?.[dim.key])}
+                              <span className="text-xs font-bold text-slate-500 dark:text-gray-400">
+                                ({feedback.scores?.[dim.key]}/5)
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Right Column: Review comments */}
+                    <div className="lg:col-span-7 space-y-6">
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                          <MessageSquare size={18} className="text-slate-400" />
+                          Overall Evaluation & Summary
+                        </h3>
+                        <div className="rounded-2xl bg-slate-50 p-5 dark:bg-[#1a1a1a] border border-slate-100 dark:border-[#2a2a2a]/30 text-sm leading-relaxed text-slate-700 dark:text-gray-300 whitespace-pre-line">
+                          {feedback.comments?.generalFeedback}
+                        </div>
+                      </div>
+
+                      {feedback.comments?.technicalComments && (
+                        <div>
+                          <h4 className="font-semibold text-slate-800 dark:text-gray-200 mb-2 text-sm">
+                            Technical Feedback
+                          </h4>
+                          <div className="rounded-xl bg-slate-50/50 p-4 dark:bg-[#1a1a1a]/50 text-sm leading-relaxed text-slate-600 dark:text-gray-400 whitespace-pre-line border border-slate-100/50 dark:border-[#2a2a2a]/20">
+                            {feedback.comments.technicalComments}
+                          </div>
+                        </div>
+                      )}
+
+                      {feedback.comments?.behavioralComments && (
+                        <div>
+                          <h4 className="font-semibold text-slate-800 dark:text-gray-200 mb-2 text-sm">
+                            Behavioral & Collaboration Notes
+                          </h4>
+                          <div className="rounded-xl bg-slate-50/50 p-4 dark:bg-[#1a1a1a]/50 text-sm leading-relaxed text-slate-600 dark:text-gray-400 whitespace-pre-line border border-slate-100/50 dark:border-[#2a2a2a]/20">
+                            {feedback.comments.behavioralComments}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : isInterviewer ? (
+                // Submit Feedback Form for Interviewer
+                <form
+                  onSubmit={handleSubmitFeedback}
+                  className="app-card rounded-3xl p-8 shadow-sm"
+                >
+                  <div className="border-b border-slate-100 pb-5 dark:border-[#2a2a2a]">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-[#1f1f1f] dark:text-gray-400">
+                      <Sparkles size={13} className="text-amber-500 fill-amber-500" />
+                      Interviewer Evaluation
+                    </div>
+                    <h2 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
+                      Evaluate Candidate Performance
+                    </h2>
+                    <p className="text-sm app-text mt-1">
+                      Complete this report to share feedback with the interviewee.
+                    </p>
+                  </div>
+
+                  <div className="mt-8 space-y-6">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 pb-2 dark:border-[#2a2a2a]">
+                      1. Parameter Ratings
+                    </h3>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {[
+                        { key: "codingSkills", label: "Coding Skills", desc: "Syntax correctness, dry-running, language fluency" },
+                        { key: "problemSolving", label: "Problem Solving", desc: "Logical approach, understanding constraints, optimizing" },
+                        { key: "communication", label: "Communication", desc: "Explaining thought process, active listening" },
+                        { key: "dsaKnowledge", label: "DSA Knowledge", desc: "Choosing correct data structures & algorithms" },
+                        { key: "codeQuality", label: "Code Quality", desc: "Modular code, proper naming, spacing, comments" },
+                        { key: "debugging", label: "Debugging", desc: "Identifying and resolving logic/run-time errors" },
+                        { key: "speed", label: "Speed / Time Management", desc: "Pacing code development, meeting constraints" },
+                        { key: "overallRating", label: "Overall Rating", desc: "Overall assessment of candidate developer skills" },
+                      ].map((dim) => (
+                        <RatingInput
+                          key={dim.key}
+                          label={dim.label}
+                          description={dim.desc}
+                          value={feedbackScores[dim.key]}
+                          onChange={(val) =>
+                            setFeedbackScores((prev) => ({ ...prev, [dim.key]: val }))
+                          }
+                        />
+                      ))}
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 pb-2 dark:border-[#2a2a2a] mt-8">
+                      2. Written Review & Comments
+                    </h3>
+
+                    <div className="space-y-5">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-gray-300">
+                          General Feedback & Summary *
+                        </label>
+                        <p className="text-xs text-slate-500 dark:text-gray-500 mt-1">
+                          Provide a summary of candidate performance, strengths, and areas for improvement.
+                        </p>
+                        <textarea
+                          rows={4}
+                          value={generalFeedback}
+                          onChange={(e) => setGeneralFeedback(e.target.value)}
+                          placeholder="Summarize candidate performance..."
+                          className="mt-2 block w-full rounded-2xl p-4 text-sm app-input focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent transition duration-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-gray-300">
+                          Technical Comments (Optional)
+                        </label>
+                        <p className="text-xs text-slate-500 dark:text-gray-500 mt-1">
+                          Specific notes on code structure, algorithm optimizations, data structure usage, or edge cases.
+                        </p>
+                        <textarea
+                          rows={3}
+                          value={technicalComments}
+                          onChange={(e) => setTechnicalComments(e.target.value)}
+                          placeholder="Notes on code, complexity analysis, DSA choices..."
+                          className="mt-2 block w-full rounded-2xl p-4 text-sm app-input focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent transition duration-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-gray-300">
+                          Behavioral Comments (Optional)
+                        </label>
+                        <p className="text-xs text-slate-500 dark:text-gray-505 mt-1">
+                          Notes on candidate behavior, reaction to hints, hints requested, or soft skills.
+                        </p>
+                        <textarea
+                          rows={3}
+                          value={behavioralComments}
+                          onChange={(e) => setBehavioralComments(e.target.value)}
+                          placeholder="Notes on collaboration, responsiveness, confidence..."
+                          className="mt-2 block w-full rounded-2xl p-4 text-sm app-input focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent transition duration-200"
+                        />
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 pb-2 dark:border-[#2a2a2a] mt-8">
+                      3. Hiring Decision
+                    </h3>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-gray-300">
+                        Recommendation *
+                      </label>
+                      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {[
+                          { value: "strong_hire", label: "Strong Hire" },
+                          { value: "hire", label: "Hire" },
+                          { value: "leaning_no_hire", label: "Leaning No Hire" },
+                          { value: "no_hire", label: "No Hire" },
+                        ].map((opt) => (
+                          <label
+                            key={opt.value}
+                            className={`flex flex-col items-center justify-center rounded-2xl border p-4 cursor-pointer transition-all duration-200 select-none ${
+                              recommendation === opt.value
+                                ? "border-slate-900 dark:border-white ring-2 ring-slate-900 dark:ring-white scale-[1.02] shadow-sm font-semibold"
+                                : "border-slate-200 dark:border-[#2a2a2a] hover:bg-slate-50 dark:hover:bg-[#1a1a1a]"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="recommendation"
+                              value={opt.value}
+                              checked={recommendation === opt.value}
+                              onChange={(e) => setRecommendation(e.target.value)}
+                              className="sr-only"
+                            />
+                            <span className="text-sm">{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-100 dark:border-[#2a2a2a] flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={submittingFeedback}
+                        className="app-btn-primary flex items-center justify-center gap-2 rounded-2xl px-8 py-4 text-sm font-semibold transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {submittingFeedback ? (
+                          <>
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent dark:border-white"></div>
+                            Submitting feedback...
+                          </>
+                        ) : (
+                          "Submit Candidate Report"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                // Waiting View for Interviewee
+                <div className="app-card rounded-3xl p-8 text-center shadow-sm">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Clock3 size={28} />
+                  </div>
+                  <h3 className="mt-5 text-xl font-bold text-slate-900 dark:text-white">
+                    Waiting for Interviewer Report
+                  </h3>
+                  <p className="mt-2 text-sm app-text max-w-md mx-auto">
+                    Your interviewer is currently evaluating your session across core dimensions.
+                    The scorecard and evaluation comments will automatically display here once submitted.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={loadFeedback}
+                    className="mt-6 app-btn-secondary inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold cursor-pointer"
+                  >
+                    Check Status
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

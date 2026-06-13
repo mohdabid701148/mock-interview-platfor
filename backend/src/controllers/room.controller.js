@@ -1,5 +1,6 @@
 import { Room } from "../models/room.model.js";
 import { Schedule } from "../models/Schedule.model.js";
+import { getEditorState, clearEditorState } from "../sockets/editor.socket.js";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -338,6 +339,18 @@ export const completeRoom = asyncHandler(async (req, res) => {
 
   room.status = "completed";
   room.completedAt = new Date();
+
+  // Retrieve current in-memory collaborative editor state and persist it
+  try {
+    const editorState = getEditorState(room._id.toString());
+    if (editorState && editorState.codeByLanguage) {
+      room.codeState = editorState.codeByLanguage;
+    }
+    // Clean up socket state from memory
+    clearEditorState(room._id.toString());
+  } catch (error) {
+    console.error("Failed to capture codeState during room completion:", error);
+  }
 
   await room.save();
 

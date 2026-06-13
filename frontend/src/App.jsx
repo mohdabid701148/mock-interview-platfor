@@ -15,6 +15,7 @@ import Room from "./pages/Room";
 import Schedule from "./pages/Schedule";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import History from "./pages/History";
 
 function App() {
   const location = useLocation();
@@ -67,6 +68,7 @@ function App() {
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/history" element={<History />} />
         </Route>
 
         <Route
