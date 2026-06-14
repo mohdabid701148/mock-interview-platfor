@@ -1,4 +1,4 @@
-const activeRooms = new Map();
+const activeRooms = new Map(); // Map<roomId, Map<userId, { userId, username, email, socketIds: Set<socketId> }>>
 
 const getRoomUsers = (roomId) => {
   const room = activeRooms.get(roomId);
@@ -20,23 +20,34 @@ const addUserToRoom = (roomId, user, socketId) => {
   }
 
   const room = activeRooms.get(roomId);
+  const userId = user._id.toString();
 
-  room.set(user._id.toString(), {
-    userId: user._id.toString(),
-    username: user.username,
-    email: user.email,
-    socketId,
-  });
+  if (!room.has(userId)) {
+    room.set(userId, {
+      userId,
+      username: user.username,
+      email: user.email,
+      socketIds: new Set(),
+    });
+  }
+
+  room.get(userId).socketIds.add(socketId);
 };
 
-const removeUserFromRoom = (roomId, userId) => {
+const removeUserFromRoom = (roomId, userId, socketId) => {
   const room = activeRooms.get(roomId);
 
   if (!room) {
     return;
   }
 
-  room.delete(userId);
+  const userEntry = room.get(userId);
+  if (userEntry) {
+    userEntry.socketIds.delete(socketId);
+    if (userEntry.socketIds.size === 0) {
+      room.delete(userId);
+    }
+  }
 
   if (room.size === 0) {
     activeRooms.delete(roomId);
@@ -53,6 +64,10 @@ export const registerRoomSocketHandlers = (io) => {
         return;
       }
 
+      const userId = socket.user._id.toString();
+      const roomUsersMap = activeRooms.get(roomId);
+      const wasAlreadyInRoom = roomUsersMap && roomUsersMap.has(userId);
+
       console.log(`${socket.user.username} joined room ${roomId}`);
 
       socket.join(roomId);
@@ -60,11 +75,13 @@ export const registerRoomSocketHandlers = (io) => {
 
       addUserToRoom(roomId, socket.user, socket.id);
 
-      socket.to(roomId).emit("user-joined", {
-        userId: socket.user._id.toString(),
-        username: socket.user.username,
-        email: socket.user.email,
-      });
+      if (!wasAlreadyInRoom) {
+        socket.to(roomId).emit("user-joined", {
+          userId,
+          username: socket.user.username,
+          email: socket.user.email,
+        });
+      }
 
       io.to(roomId).emit("room-users", getRoomUsers(roomId));
     });
@@ -78,13 +95,19 @@ export const registerRoomSocketHandlers = (io) => {
 
       socket.leave(roomId);
 
-      removeUserFromRoom(roomId, socket.user._id.toString());
+      const userId = socket.user._id.toString();
+      removeUserFromRoom(roomId, userId, socket.id);
 
-      socket.to(roomId).emit("user-left", {
-        userId: socket.user._id.toString(),
-        username: socket.user.username,
-        email: socket.user.email,
-      });
+      const roomUsersMap = activeRooms.get(roomId);
+      const isStillInRoom = roomUsersMap && roomUsersMap.has(userId);
+
+      if (!isStillInRoom) {
+        socket.to(roomId).emit("user-left", {
+          userId,
+          username: socket.user.username,
+          email: socket.user.email,
+        });
+      }
 
       io.to(roomId).emit("room-users", getRoomUsers(roomId));
 
@@ -100,13 +123,19 @@ export const registerRoomSocketHandlers = (io) => {
 
       console.log(`${socket.user.username} disconnected from room ${roomId}`);
 
-      removeUserFromRoom(roomId, socket.user._id.toString());
+      const userId = socket.user._id.toString();
+      removeUserFromRoom(roomId, userId, socket.id);
 
-      socket.to(roomId).emit("user-left", {
-        userId: socket.user._id.toString(),
-        username: socket.user.username,
-        email: socket.user.email,
-      });
+      const roomUsersMap = activeRooms.get(roomId);
+      const isStillInRoom = roomUsersMap && roomUsersMap.has(userId);
+
+      if (!isStillInRoom) {
+        socket.to(roomId).emit("user-left", {
+          userId,
+          username: socket.user.username,
+          email: socket.user.email,
+        });
+      }
 
       io.to(roomId).emit("room-users", getRoomUsers(roomId));
     });

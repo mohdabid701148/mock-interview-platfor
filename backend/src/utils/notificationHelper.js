@@ -9,21 +9,23 @@ import { emitToUser } from "../config/socket.js";
  * @param {string} type - Enum: 'schedule' | 'cancel' | 'feedback' | 'complete'
  * @returns {Promise<Notification|null>} The created notification document or null if failed
  */
-export const createNotification = async (userId, title, message, type) => {
+export const createNotification = async (userId, title, message, type, options = {}) => {
   try {
     if (!userId) {
       console.warn("[NotificationHelper] Skip notification: No recipient userId provided");
       return null;
     }
 
-    // 1. Create and save notification in MongoDB
-    const notification = await Notification.create({
+    // 1. Create and save notification in MongoDB with session support
+    const notification = new Notification({
       user: userId,
       title,
       message,
       type,
       isRead: false,
     });
+    
+    await notification.save({ session: options.session });
 
     // 2. Emit real-time WebSockets push event if the recipient user is connected
     emitToUser(userId.toString(), "new-notification", notification);

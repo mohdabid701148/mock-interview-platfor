@@ -84,13 +84,23 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       const status = err?.response?.status;
 
-      setUser(null);
-      localStorage.removeItem("user");
-
       if (status === 401 || status === 403) {
+        // Genuine auth failure — clear everything
         clearAuthStorage();
+        return null;
       }
 
+      // For 429 (rate limited) or network errors, keep cached user
+      // The user IS authenticated, just temporarily blocked
+      const cachedUser = safeParseUser();
+      if (cachedUser) {
+        setUser(cachedUser);
+        return cachedUser;
+      }
+
+      // No cached user and can't verify — treat as unauthenticated
+      setUser(null);
+      localStorage.removeItem("user");
       return null;
     } finally {
       setLoading(false);

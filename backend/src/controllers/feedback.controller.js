@@ -1,7 +1,9 @@
+import mongoose from "mongoose";
 import { Feedback } from "../models/Feedback.model.js";
 import { Room } from "../models/room.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { createNotification } from "../utils/notificationHelper.js";
+import { emitToUser } from "../config/socket.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -15,98 +17,119 @@ export const submitFeedback = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Room ID is required");
   }
 
-  // 1. Fetch Room details
-  const room = await Room.findById(roomId);
-  if (!room) {
-    throw new ApiError(404, "Mock interview session not found");
-  }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  // 2. Validate user is the interviewer
-  if (room.interviewer.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "Only the designated interviewer can submit feedback");
-  }
-
-  // 3. Validate room is completed
-  if (room.status !== "completed") {
-    throw new ApiError(400, "Feedback can only be submitted after completing the interview session");
-  }
-
-  // 4. Ensure there is an interviewee
-  if (!room.interviewee) {
-    throw new ApiError(400, "Cannot submit feedback for a session without a candidate/interviewee");
-  }
-
-  // 5. Ensure scores and comments are provided
-  if (!scores || !comments || !recommendation) {
-    throw new ApiError(400, "Scores, comments, and hiring recommendation are required");
-  }
-
-  const requiredScores = [
-    "codingSkills",
-    "problemSolving",
-    "communication",
-    "dsaKnowledge",
-    "codeQuality",
-    "debugging",
-    "speed",
-    "overallRating"
-  ];
-
-  for (const field of requiredScores) {
-    const val = scores[field];
-    if (val === undefined || val === null || val < 1 || val > 5) {
-      throw new ApiError(400, `Valid score (1-5) is required for ${field}`);
+  try {
+    // 1. Fetch Room details inside transaction
+    const room = await Room.findById(roomId).session(session);
+    if (!room) {
+      throw new ApiError(404, "Mock interview session not found");
     }
+
+    // 2. Validate user is the interviewer
+    if (room.interviewer.toString() !== req.user._id.toString()) {
+      throw new ApiError(403, "Only the designated interviewer can submit feedback");
+    }
+
+    // 3. Validate room is completed
+    if (room.status !== "completed") {
+      throw new ApiError(400, "Feedback can only be submitted after completing the interview session");
+    }
+
+    // 4. Ensure there is an interviewee
+    if (!room.interviewee) {
+      throw new ApiError(400, "Cannot submit feedback for a session without a candidate/interviewee");
+    }
+
+    // 5. Ensure scores and comments are provided
+    if (!scores || !comments || !recommendation) {
+      throw new ApiError(400, "Scores, comments, and hiring recommendation are required");
+    }
+
+    const requiredScores = [
+      "codingSkills",
+      "problemSolving",
+      "communication",
+      "dsaKnowledge",
+      "codeQuality",
+      "debugging",
+      "speed",
+      "overallRating"
+    ];
+
+    for (const field of requiredScores) {
+      const val = scores[field];
+      if (val === undefined || val === null || val < 1 || val > 5) {
+        throw new ApiError(400, `Valid score (1-5) is required for ${field}`);
+      }
+    }
+
+    if (!comments.generalFeedback?.trim()) {
+      throw new ApiError(400, "General feedback summary is required");
+    }
+
+    // 6. Check if feedback already exists for this room
+    const existingFeedback = await Feedback.findOne({ room: roomId }).session(session);
+    if (existingFeedback) {
+      throw new ApiError(400, "Feedback has already been submitted for this interview session");
+    }
+
+    // 7. Create Feedback
+    const feedback = new Feedback({
+      room: roomId,
+      interviewer: room.interviewer,
+      interviewee: room.interviewee,
+      scores: {
+        codingSkills: Number(scores.codingSkills),
+        problemSolving: Number(scores.problemSolving),
+        communication: Number(scores.communication),
+        dsaKnowledge: Number(scores.dsaKnowledge),
+        codeQuality: Number(scores.codeQuality),
+        debugging: Number(scores.debugging),
+        speed: Number(scores.speed),
+        overallRating: Number(scores.overallRating),
+      },
+      comments: {
+        technicalComments: comments.technicalComments || "",
+        behavioralComments: comments.behavioralComments || "",
+        generalFeedback: comments.generalFeedback,
+      },
+      recommendation,
+    });
+
+    await feedback.save({ session });
+
+    // Notify the interviewee
+    await createNotification(
+      feedback.interviewee,
+      "Feedback Received",
+      `Your feedback for "${room.title}" is now available.`,
+      "feedback",
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    // Notify interviewee in real-time that feedback is available
+    emitToUser(feedback.interviewee.toString(), "feedback-submitted", {
+      roomId: roomId.toString(),
+      feedbackId: feedback._id.toString(),
+    });
+
+    return res.status(201).json(
+      new ApiResponse(
+        201,
+        feedback,
+        "Post-interview feedback submitted successfully"
+      )
+    );
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-
-  if (!comments.generalFeedback?.trim()) {
-    throw new ApiError(400, "General feedback summary is required");
-  }
-
-  // 6. Check if feedback already exists for this room
-  const existingFeedback = await Feedback.findOne({ room: roomId });
-  if (existingFeedback) {
-    throw new ApiError(400, "Feedback has already been submitted for this interview session");
-  }
-
-  // 7. Create Feedback
-  const feedback = await Feedback.create({
-    room: roomId,
-    interviewer: room.interviewer,
-    interviewee: room.interviewee,
-    scores: {
-      codingSkills: Number(scores.codingSkills),
-      problemSolving: Number(scores.problemSolving),
-      communication: Number(scores.communication),
-      dsaKnowledge: Number(scores.dsaKnowledge),
-      codeQuality: Number(scores.codeQuality),
-      debugging: Number(scores.debugging),
-      speed: Number(scores.speed),
-      overallRating: Number(scores.overallRating),
-    },
-    comments: {
-      technicalComments: comments.technicalComments || "",
-      behavioralComments: comments.behavioralComments || "",
-      generalFeedback: comments.generalFeedback,
-    },
-    recommendation,
-  });
-
-  // Notify the interviewee
-  await createNotification(
-    feedback.interviewee,
-    "Feedback Received",
-    `Your feedback for "${room.title}" is now available.`,
-    "feedback"
-  );
-
-  return res.status(201).json(
-    new ApiResponse(
-      201,
-      feedback,
-      "Post-interview feedback submitted successfully"
-    )
-  );
 });
 
 // @desc Get feedback details for a specific mock interview room

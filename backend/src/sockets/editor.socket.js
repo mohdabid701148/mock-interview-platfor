@@ -72,6 +72,41 @@ export const registerEditorSocketHandlers = (io) => {
         return;
       }
 
+      // Verify user is a participant of the room
+      try {
+        const room = await Room.findById(roomId);
+        if (!room) {
+          socket.emit("socket-error", {
+            message: "Room not found",
+          });
+          return;
+        }
+
+        const userId = socket.user?._id?.toString();
+        const isInterviewer = room.interviewer?.toString() === userId;
+        const isInterviewee = room.interviewee?.toString() === userId;
+        const isParticipant = room.participants?.some(
+          (p) => p.user?.toString() === userId
+        );
+
+        if (!isInterviewer && !isInterviewee && !isParticipant) {
+          socket.emit("socket-error", {
+            message: "Unauthorized access to this room",
+          });
+          return;
+        }
+
+        // Cache the room authorization on this socket
+        socket.authorizedRooms = socket.authorizedRooms || new Set();
+        socket.authorizedRooms.add(roomId);
+      } catch (err) {
+        console.error("Editor socket auth error:", err.message);
+        socket.emit("socket-error", {
+          message: "Authorization check failed",
+        });
+        return;
+      }
+
       socket.join(roomId);
 
       // Restore active editor state from MongoDB if empty in memory (e.g. after server restart)
@@ -112,6 +147,14 @@ export const registerEditorSocketHandlers = (io) => {
         return;
       }
 
+      // Check room authorization
+      if (!socket.authorizedRooms || !socket.authorizedRooms.has(roomId)) {
+        socket.emit("socket-error", {
+          message: "Unauthorized room operation",
+        });
+        return;
+      }
+
       const currentState = getEditorState(roomId);
 
       const nextState = {
@@ -145,6 +188,14 @@ export const registerEditorSocketHandlers = (io) => {
 
     socket.on("language-change", ({ roomId, language, codeByLanguage }) => {
       if (!roomId || !language) {
+        return;
+      }
+
+      // Check room authorization
+      if (!socket.authorizedRooms || !socket.authorizedRooms.has(roomId)) {
+        socket.emit("socket-error", {
+          message: "Unauthorized room operation",
+        });
         return;
       }
 

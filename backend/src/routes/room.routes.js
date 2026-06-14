@@ -11,18 +11,24 @@ import {
 } from "../controllers/Room.controller.js";
 
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import {
+  validate,
+  createRoomSchema,
+  joinRoomSchema,
+  roomIdParamSchema,
+} from "../middlewares/validation.middleware.js";
 
 const router = express.Router();
 
-router.post("/create", verifyJWT, createRoom);
+router.post("/create", verifyJWT, validate(createRoomSchema), createRoom);
 
-router.post("/join", verifyJWT, joinRoom);
+router.post("/join", verifyJWT, validate(joinRoomSchema), joinRoom);
 
-router.post("/leave/:roomId", verifyJWT, leaveRoom);
+router.post("/leave/:roomId", verifyJWT, validate(roomIdParamSchema), leaveRoom);
 
-router.patch("/:roomId/start", verifyJWT, startRoom);
+router.patch("/:roomId/start", verifyJWT, validate(roomIdParamSchema), startRoom);
 
-router.patch("/:roomId/complete", verifyJWT, completeRoom);
+router.patch("/:roomId/complete", verifyJWT, validate(roomIdParamSchema), completeRoom);
 
 router.get("/my-rooms", verifyJWT, getUserRooms);
 

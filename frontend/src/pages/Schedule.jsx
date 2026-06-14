@@ -120,6 +120,7 @@ const Schedule = () => {
           err?.message ||
           "Failed to schedule interview"
       );
+      throw err;
     } finally {
       setScheduleCreating(false);
     }

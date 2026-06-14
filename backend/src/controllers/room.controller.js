@@ -1,7 +1,9 @@
+import mongoose from "mongoose";
 import { Room } from "../models/room.model.js";
 import { Schedule } from "../models/Schedule.model.js";
 import { createNotification } from "../utils/notificationHelper.js";
 import { getEditorState, clearEditorState } from "../sockets/editor.socket.js";
+import { emitToUser, emitToRoom } from "../config/socket.js";
 import { generateRoomCode } from "../utils/generateRoomCode.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -125,6 +127,12 @@ export const joinRoom = asyncHandler(async (req, res) => {
 
   const updatedRoom = await populateRoom(room._id);
 
+  // Notify all participants in real-time that someone joined
+  emitToRoom(updatedRoom, "room-updated", {
+    roomId: room._id.toString(),
+    room: updatedRoom,
+  });
+
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -158,6 +166,34 @@ export const leaveRoom = asyncHandler(async (req, res) => {
     );
   }
 
+  // If room is already cancelled, allow the leave but skip notification/emission
+  // to prevent duplicate cancellation notifications
+  if (room.status === "cancelled") {
+    // Remove the user from participants list silently
+    room.participants = room.participants.filter(
+      (participant) =>
+        participant.user.toString() !== req.user._id.toString()
+    );
+
+    const isInterviewee =
+      room.interviewee &&
+      room.interviewee.toString() === req.user._id.toString();
+
+    if (isInterviewee) {
+      room.interviewee = null;
+    }
+
+    await room.save();
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {},
+        "Left cancelled room"
+      )
+    );
+  }
+
   const isInterviewer =
     room.interviewer.toString() === req.user._id.toString();
 
@@ -180,6 +216,14 @@ export const leaveRoom = asyncHandler(async (req, res) => {
       }
     );
 
+    // Notify the interviewer (self) that they cancelled the room
+    await createNotification(
+      room.interviewer,
+      "Interview Cancelled",
+      `You left the interview "${room.title}". The session has been cancelled.`,
+      "cancel"
+    );
+
     // Notify interviewee if set
     if (room.interviewee) {
       await createNotification(
@@ -189,6 +233,13 @@ export const leaveRoom = asyncHandler(async (req, res) => {
         "cancel"
       );
     }
+
+    // Notify all participants of cancellation
+    const cancelledRoom = await populateRoom(room._id);
+    emitToRoom(cancelledRoom, "room-updated", {
+      roomId: room._id.toString(),
+      room: cancelledRoom,
+    });
 
     return res.status(200).json(
       new ApiResponse(
@@ -221,6 +272,14 @@ export const leaveRoom = asyncHandler(async (req, res) => {
       room.status = "waiting";
     }
 
+    // Notify the interviewee (self) that they left
+    await createNotification(
+      req.user._id,
+      "You Left the Interview",
+      `You left the interview "${room.title}".`,
+      "cancel"
+    );
+
     // Notify interviewer
     await createNotification(
       room.interviewer,
@@ -231,6 +290,13 @@ export const leaveRoom = asyncHandler(async (req, res) => {
   }
 
   await room.save();
+
+  // Notify remaining participant that someone left
+  const leftRoom = await populateRoom(room._id);
+  emitToRoom(leftRoom, "room-updated", {
+    roomId: room._id.toString(),
+    room: leftRoom,
+  });
 
   return res.status(200).json(
     new ApiResponse(
@@ -330,6 +396,12 @@ export const startRoom = asyncHandler(async (req, res) => {
 
   const updatedRoom = await populateRoom(room._id);
 
+  // Notify all participants that interview started
+  emitToRoom(updatedRoom, "room-updated", {
+    roomId: room._id.toString(),
+    room: updatedRoom,
+  });
+
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -342,64 +414,85 @@ export const startRoom = asyncHandler(async (req, res) => {
 export const completeRoom = asyncHandler(async (req, res) => {
   const { roomId } = req.params;
 
-  const room = await Room.findById(roomId);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!room) {
-    throw new ApiError(404, "Room not found");
-  }
-
-  if (room.interviewer.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "Only interviewer can complete the interview");
-  }
-
-  if (room.status !== "active") {
-    throw new ApiError(400, "Only active interview can be completed");
-  }
-
-  room.status = "completed";
-  room.completedAt = new Date();
-
-  // Retrieve current in-memory collaborative editor state and persist it
   try {
-    const editorState = getEditorState(room._id.toString());
-    if (editorState && editorState.codeByLanguage) {
-      room.codeState = editorState.codeByLanguage;
+    const room = await Room.findById(roomId).session(session);
+
+    if (!room) {
+      throw new ApiError(404, "Room not found");
     }
-    // Clean up socket state from memory
-    clearEditorState(room._id.toString());
-  } catch (error) {
-    console.error("Failed to capture codeState during room completion:", error);
-  }
 
-  await room.save();
-
-  await Schedule.findOneAndUpdate(
-    {
-      room: room._id,
-      status: "scheduled",
-    },
-    {
-      status: "completed",
+    if (room.interviewer.toString() !== req.user._id.toString()) {
+      throw new ApiError(403, "Only interviewer can complete the interview");
     }
-  );
 
-  // Notify both participants
-  await createNotification(
-    room.interviewer,
-    "Interview Completed",
-    `The interview session "${room.title}" has been completed successfully.`,
-    "complete"
-  );
-  if (room.interviewee) {
+    if (room.status !== "active") {
+      throw new ApiError(400, "Only active interview can be completed");
+    }
+
+    room.status = "completed";
+    room.completedAt = new Date();
+
+    // Retrieve current in-memory collaborative editor state and persist it
+    try {
+      const editorState = getEditorState(room._id.toString());
+      if (editorState && editorState.codeByLanguage) {
+        room.codeState = editorState.codeByLanguage;
+      }
+      // Clean up socket state from memory
+      clearEditorState(room._id.toString());
+    } catch (error) {
+      console.error("Failed to capture codeState during room completion:", error);
+    }
+
+    await room.save({ session });
+
+    await Schedule.findOneAndUpdate(
+      {
+        room: room._id,
+        status: "scheduled",
+      },
+      {
+        status: "completed",
+      },
+      { session }
+    );
+
+    // Notify both participants
     await createNotification(
-      room.interviewee,
+      room.interviewer,
       "Interview Completed",
       `The interview session "${room.title}" has been completed successfully.`,
-      "complete"
+      "complete",
+      { session }
     );
+    if (room.interviewee) {
+      await createNotification(
+        room.interviewee,
+        "Interview Completed",
+        `The interview session "${room.title}" has been completed successfully.`,
+        "complete",
+        { session }
+      );
+    }
+
+    await session.commitTransaction();
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
 
-  const updatedRoom = await populateRoom(room._id);
+  const updatedRoom = await populateRoom(roomId);
+
+  // Notify all participants that interview completed
+  emitToRoom(updatedRoom, "room-updated", {
+    roomId: updatedRoom._id.toString(),
+    room: updatedRoom,
+  });
 
   return res.status(200).json(
     new ApiResponse(

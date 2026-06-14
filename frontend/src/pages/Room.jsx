@@ -317,79 +317,108 @@ const Room = () => {
     }
   }, [roomStatus, socketRoomId]);
 
+  const isRoomLoaded = Boolean(room);
+
   useEffect(() => {
-  if (!socket || !socketRoomId || !room) {
-    return;
-  }
-
-  let reconnectTimer;
-
-  const handleConnect = () => {
-    clearTimeout(reconnectTimer);
-
-    setSocketStatus("connected");
-    setMessage("");
-
-    socket.emit("join-room", { roomId: socketRoomId });
-  };
-
-  const handleDisconnect = () => {
-    setSocketStatus("connecting");
-    setActiveUsers([]);
-  };
-
-  const handleConnectError = () => {
-    setSocketStatus("connecting");
-    setActiveUsers([]);
-
-    clearTimeout(reconnectTimer);
-
-    reconnectTimer = setTimeout(() => {
-      if (!socket.connected && !socket.active) {
-        setSocketStatus("error");
-      }
-    }, 15000);
-  };
-
-  const handleRoomUsers = (users) => {
-    clearTimeout(reconnectTimer);
-
-    setSocketStatus("connected");
-    setMessage("");
-    setActiveUsers(Array.isArray(users) ? users : []);
-  };
-
-  const handleSocketError = (error) => {
-    setMessage(error?.message || "Socket error");
-  };
-
-  socket.on("connect", handleConnect);
-  socket.on("disconnect", handleDisconnect);
-  socket.on("connect_error", handleConnectError);
-  socket.on("room-users", handleRoomUsers);
-  socket.on("socket-error", handleSocketError);
-
-  if (socket.connected) {
-    handleConnect();
-  } else {
-    setSocketStatus("connecting");
-    socket.connect();
-  }
-
-  return () => {
-    clearTimeout(reconnectTimer);
-
-    if (socket.connected) {
-      socket.emit("leave-room", { roomId: socketRoomId });
+    if (!socket || !socketRoomId || !isRoomLoaded) {
+      return;
     }
 
-    socket.off("connect", handleConnect);
-    socket.off("disconnect", handleDisconnect);
-    socket.off("connect_error", handleConnectError);
-    socket.off("room-users", handleRoomUsers);
-    socket.off("socket-error", handleSocketError);
-  };
-}, [socket, socketRoomId, room]);
+    let reconnectTimer;
+
+    const handleConnect = () => {
+      clearTimeout(reconnectTimer);
+
+      setSocketStatus("connected");
+      setMessage("");
+
+      socket.emit("join-room", { roomId: socketRoomId });
+    };
+
+    const handleDisconnect = () => {
+      setSocketStatus("connecting");
+      setActiveUsers([]);
+    };
+
+    const handleConnectError = () => {
+      setSocketStatus("connecting");
+      setActiveUsers([]);
+
+      clearTimeout(reconnectTimer);
+
+      reconnectTimer = setTimeout(() => {
+        if (!socket.connected && !socket.active) {
+          setSocketStatus("error");
+        }
+      }, 15000);
+    };
+
+    const handleRoomUsers = (users) => {
+      clearTimeout(reconnectTimer);
+
+      setSocketStatus("connected");
+      setMessage("");
+      setActiveUsers(Array.isArray(users) ? users : []);
+    };
+
+    const handleSocketError = (error) => {
+      setMessage(error?.message || "Socket error");
+    };
+
+    const handleRoomUpdated = (data) => {
+      if (data?.room) {
+        setRoom(data.room);
+
+        // If the room was just cancelled, show message and redirect
+        if (data.room.status === "cancelled") {
+          setMessage("This interview has been cancelled. Redirecting to rooms...");
+          setTimeout(() => {
+            navigate("/rooms");
+          }, 4000);
+        }
+      } else {
+        loadRoom();
+      }
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("connect_error", handleConnectError);
+    socket.on("room-users", handleRoomUsers);
+    socket.on("socket-error", handleSocketError);
+    socket.on("room-updated", handleRoomUpdated);
+
+    const handleFeedbackSubmitted = (data) => {
+      if (data?.roomId === socketRoomId) {
+        loadFeedback();
+      }
+    };
+
+    socket.on("feedback-submitted", handleFeedbackSubmitted);
+
+    if (socket.connected) {
+      handleConnect();
+    } else {
+      setSocketStatus("connecting");
+      socket.connect();
+    }
+
+    return () => {
+      clearTimeout(reconnectTimer);
+
+      if (socket.connected) {
+        socket.emit("leave-room", { roomId: socketRoomId });
+      }
+
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("connect_error", handleConnectError);
+      socket.off("room-users", handleRoomUsers);
+      socket.off("socket-error", handleSocketError);
+      socket.off("room-updated", handleRoomUpdated);
+      socket.off("feedback-submitted", handleFeedbackSubmitted);
+    };
+  }, [socket, socketRoomId, isRoomLoaded]);
 
   const handleStartInterview = async () => {
     try {
@@ -614,7 +643,7 @@ const Room = () => {
                   </button>
                 )}
 
-                {roomStatus !== "active" && roomStatus !== "completed" && (
+                {roomStatus !== "active" && roomStatus !== "completed" && roomStatus !== "cancelled" && (
                   <button
                     type="button"
                     onClick={handleLeave}
@@ -636,6 +665,30 @@ const Room = () => {
                 )}
               </div>
             </div>
+
+            {roomStatus === "cancelled" && (
+              <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 px-6 py-5 dark:border-red-500/20 dark:bg-red-500/10">
+                <div className="flex items-center gap-3">
+                  <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                      Interview Cancelled
+                    </h3>
+                    <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                      This interview session has been cancelled. You will be redirected shortly.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/rooms")}
+                  className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-red-700"
+                >
+                  <ArrowLeft size={17} />
+                  Go to Rooms
+                </button>
+              </div>
+            )}
 
             {!hasInterviewee && roomStatus === "waiting" && (
               <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">

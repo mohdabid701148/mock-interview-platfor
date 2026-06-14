@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -15,12 +15,23 @@ const Navbar = ({
   title = "Dashboard",
   subtitle = "",
   onCreateRoom,
+  searchValue,
+  onSearchChange,
+  placeholder = "Search rooms...",
 }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [showMenu, setShowMenu] = useState(false);
+  const [localSearch, setLocalSearch] = useState(searchValue || "");
+
+  // Sync local search state with parent prop if provided
+  useEffect(() => {
+    if (searchValue !== undefined) {
+      setLocalSearch(searchValue);
+    }
+  }, [searchValue]);
 
   const handleLogout = async () => {
     try {
@@ -51,6 +62,28 @@ const Navbar = ({
     setShowMenu(false);
   };
 
+  const executeSearch = (query) => {
+    if (onSearchChange) {
+      onSearchChange(query);
+    } else {
+      navigate(`/rooms?search=${encodeURIComponent(query)}`);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      executeSearch(localSearch);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setLocalSearch(val);
+    if (onSearchChange) {
+      onSearchChange(val);
+    }
+  };
+
   const initials =
     user?.username?.charAt(0)?.toUpperCase() ||
     user?.email?.charAt(0)?.toUpperCase() ||
@@ -78,11 +111,15 @@ const Navbar = ({
         <div className="relative hidden md:block">
           <Search
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500 cursor-pointer"
+            onClick={() => executeSearch(localSearch)}
           />
           <input
             type="text"
-            placeholder="Search rooms..."
+            placeholder={placeholder}
+            value={localSearch}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             className="
               w-64
               rounded-xl

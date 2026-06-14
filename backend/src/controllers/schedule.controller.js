@@ -3,6 +3,7 @@ import { Schedule } from "../models/Schedule.model.js";
 import { Room } from "../models/room.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { createNotification } from "../utils/notificationHelper.js";
+import { emitToRoom } from "../config/socket.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -155,6 +156,12 @@ export const createSchedule = asyncHandler(async (req, res) => {
   if (interviewRoom.status === "waiting") {
     interviewRoom.status = "scheduled";
     await interviewRoom.save();
+
+    // Notify both participants that room is now scheduled
+    emitToRoom(interviewRoom, "room-updated", {
+      roomId: interviewRoom._id.toString(),
+      room: interviewRoom,
+    });
   }
 
   const populatedSchedule = await populateSchedule(schedule._id);
@@ -204,10 +211,16 @@ export const getUpcomingInterviews = asyncHandler(async (req, res) => {
     .populate("createdBy", "username fullName email avatar")
     .sort({ scheduledAt: 1 });
 
+  // Exclude schedules whose linked room is no longer upcoming
+  const filtered = interviews.filter((schedule) => {
+    const roomStatus = schedule.room?.status;
+    return !["active", "completed", "cancelled"].includes(roomStatus);
+  });
+
   return res.status(200).json(
     new ApiResponse(
       200,
-      interviews,
+      filtered,
       "Upcoming interviews fetched successfully"
     )
   );
@@ -250,16 +263,30 @@ export const updateScheduleStatus = asyncHandler(async (req, res) => {
   await schedule.save();
 
   if (status === "completed") {
-    await Room.findByIdAndUpdate(schedule.room, {
+    const completedRoom = await Room.findByIdAndUpdate(schedule.room, {
       status: "completed",
       completedAt: new Date(),
-    });
+    }, { new: true });
+
+    if (completedRoom) {
+      emitToRoom(completedRoom, "room-updated", {
+        roomId: completedRoom._id.toString(),
+        room: completedRoom,
+      });
+    }
   }
 
   if (status === "cancelled") {
-    await Room.findByIdAndUpdate(schedule.room, {
+    const cancelledRoom = await Room.findByIdAndUpdate(schedule.room, {
       status: "cancelled",
-    });
+    }, { new: true });
+
+    if (cancelledRoom) {
+      emitToRoom(cancelledRoom, "room-updated", {
+        roomId: cancelledRoom._id.toString(),
+        room: cancelledRoom,
+      });
+    }
   }
 
   const updatedSchedule = await populateSchedule(schedule._id);
@@ -308,48 +335,79 @@ export const cancelSchedule = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid schedule id");
   }
 
-  const schedule = await Schedule.findById(id);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!schedule) {
-    throw new ApiError(404, "Schedule not found");
+  try {
+    const schedule = await Schedule.findById(id).session(session);
+
+    if (!schedule) {
+      throw new ApiError(404, "Schedule not found");
+    }
+
+    if (schedule.status === "completed") {
+      throw new ApiError(400, "Completed interviews cannot be cancelled");
+    }
+
+    const requesterId = req.user._id.toString();
+    const interviewerId = schedule.interviewer.toString();
+    const intervieweeId = schedule.interviewee.toString();
+
+    const isParticipant =
+      requesterId === interviewerId || requesterId === intervieweeId;
+
+    if (!isParticipant) {
+      throw new ApiError(403, "You are not allowed to cancel this schedule");
+    }
+
+    schedule.status = "cancelled";
+    await schedule.save({ session });
+
+    await Room.findByIdAndUpdate(
+      schedule.room,
+      { status: "waiting" },
+      { session }
+    );
+
+    // Fetch room title to notify participants
+    const roomDoc = await Room.findById(schedule.room).session(session);
+    const roomTitle = roomDoc ? roomDoc.title : "Session";
+
+    await createNotification(
+      schedule.interviewer,
+      "Interview Cancelled",
+      `The interview "${roomTitle}" has been cancelled.`,
+      "cancel",
+      { session }
+    );
+    await createNotification(
+      schedule.interviewee,
+      "Interview Cancelled",
+      `The interview "${roomTitle}" has been cancelled.`,
+      "cancel",
+      { session }
+    );
+
+    await session.commitTransaction();
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
 
-  if (schedule.status === "completed") {
-    throw new ApiError(400, "Completed interviews cannot be cancelled");
-  }
-
-  const requesterId = req.user._id.toString();
-  const interviewerId = schedule.interviewer.toString();
-  const intervieweeId = schedule.interviewee.toString();
-
-  const isParticipant =
-    requesterId === interviewerId || requesterId === intervieweeId;
-
-  if (!isParticipant) {
-    throw new ApiError(403, "You are not allowed to cancel this schedule");
-  }
-
-  schedule.status = "cancelled";
-  await schedule.save();
-
-await Room.findByIdAndUpdate(schedule.room, {
-  status: "waiting",
-});
-
-  const cancelledSchedule = await populateSchedule(schedule._id);
-
-  await createNotification(
-    cancelledSchedule.interviewer._id,
-    "Interview Cancelled",
-    `The interview "${cancelledSchedule.room.title}" has been cancelled.`,
-    "cancel"
+  // Notify participants that room is back to waiting (after transaction)
+  const waitingRoom = await Room.findById(
+    (await Schedule.findById(id))?.room
   );
-  await createNotification(
-    cancelledSchedule.interviewee._id,
-    "Interview Cancelled",
-    `The interview "${cancelledSchedule.room.title}" has been cancelled.`,
-    "cancel"
-  );
+  if (waitingRoom) {
+    emitToRoom(waitingRoom, "room-updated", {
+      roomId: waitingRoom._id.toString(),
+      room: waitingRoom,
+    });
+  }
+
+  const cancelledSchedule = await populateSchedule(id);
 
   return res.status(200).json(
     new ApiResponse(

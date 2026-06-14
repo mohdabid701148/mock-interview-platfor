@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import Sidebar from "../components/dashboard/Sidebar";
 import Navbar from "../components/dashboard/Navbar";
 import { feedbackService } from "../services/feedback.service";
@@ -56,12 +57,29 @@ const formatDateTime = (value) => {
 
 const History = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
   // Filtering states
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") || "";
+    if (searchQuery !== urlSearch) {
+      setSearchQuery(urlSearch);
+    }
+  }, [searchParams]);
+
+  const handleSearchChange = (newVal) => {
+    setSearchQuery(newVal);
+    if (newVal) {
+      setSearchParams({ search: newVal }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  };
   const [roleFilter, setRoleFilter] = useState("all"); // 'all' | 'interviewer' | 'interviewee'
   const [langFilter, setLangFilter] = useState("all");
   const [recFilter, setRecFilter] = useState("all");
@@ -128,6 +146,9 @@ const History = () => {
           <Navbar
             title="Interview History"
             subtitle="Review detailed scorecards and code snapshots from past mock interviews"
+            searchValue={searchQuery}
+            onSearchChange={handleSearchChange}
+            placeholder="Search history..."
           />
 
           {error && (
@@ -149,7 +170,7 @@ const History = () => {
                   type="text"
                   placeholder="Search by session title or code..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 text-sm rounded-2xl app-input focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent transition"
                 />
               </div>

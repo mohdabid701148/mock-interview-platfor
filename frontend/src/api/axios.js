@@ -65,12 +65,13 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const storedRefreshToken = localStorage.getItem("refreshToken");
+
         const refreshResponse = await axios.post(
           `${BASE_URL}/auth/refresh-token`,
-          {},
+          { refreshToken: storedRefreshToken || undefined },
           {
             withCredentials: true,
-            skipAuthRefresh: true,
           }
         );
 
@@ -78,9 +79,17 @@ axiosInstance.interceptors.response.use(
           refreshResponse.data?.data?.accessToken ||
           refreshResponse.data?.accessToken;
 
+        const newRefreshToken =
+          refreshResponse.data?.data?.refreshToken ||
+          refreshResponse.data?.refreshToken;
+
         if (newAccessToken) {
           localStorage.setItem("accessToken", newAccessToken);
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        }
+
+        if (newRefreshToken) {
+          localStorage.setItem("refreshToken", newRefreshToken);
         }
 
         processQueue();
@@ -88,9 +97,11 @@ axiosInstance.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError);
 
-        localStorage.clear();
-        sessionStorage.clear();
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
 
+        window.dispatchEvent(new Event("auth-change"));
         window.location.replace("/login");
         return Promise.reject(refreshError);
       } finally {

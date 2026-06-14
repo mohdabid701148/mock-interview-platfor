@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Filter,
   Search,
@@ -61,16 +61,33 @@ const hasInterviewee = (room) => {
 const Rooms = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const createRoomRef = useRef(null);
 
   const [rooms, setRooms] = useState([]);
   const [pageLoading, setPageLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
   const [activeFilter, setActiveFilter] = useState("all");
 
   const currentUserId = getUserId(user);
+
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") || "";
+    if (search !== urlSearch) {
+      setSearch(urlSearch);
+    }
+  }, [searchParams]);
+
+  const handleSearchChange = (newVal) => {
+    setSearch(newVal);
+    if (newVal) {
+      setSearchParams({ search: newVal }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  };
 
   const loadRooms = async () => {
     try {
@@ -214,6 +231,8 @@ const Rooms = () => {
           <Navbar
             title="Interview Sessions"
             subtitle="Create, join, and manage your mock interview sessions"
+            searchValue={search}
+            onSearchChange={handleSearchChange}
           />
 
           {message && (
@@ -328,7 +347,7 @@ const Rooms = () => {
                       type="text"
                       placeholder="Search by title, code, language, or participant..."
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      onChange={(e) => handleSearchChange(e.target.value)}
                       className="app-input w-full rounded-2xl py-3 pl-11 pr-4 outline-none"
                     />
                   </div>

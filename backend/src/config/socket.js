@@ -20,6 +20,23 @@ export const emitToUser = (userId, eventName, data) => {
   });
 };
 
+// Emit an event to all participants of a room (interviewer + interviewee)
+// Works across all pages — uses userSocketRegistry, not Socket.IO rooms
+export const emitToRoom = (room, eventName, data) => {
+  if (!room) return;
+  const userIds = new Set();
+
+  const interviewerId =
+    room.interviewer?._id?.toString() || room.interviewer?.toString();
+  const intervieweeId =
+    room.interviewee?._id?.toString() || room.interviewee?.toString();
+
+  if (interviewerId) userIds.add(interviewerId);
+  if (intervieweeId) userIds.add(intervieweeId);
+
+  userIds.forEach((uid) => emitToUser(uid, eventName, data));
+};
+
 const getAllowedOrigins = () => {
   const origins = process.env.CORS_ORIGIN || "http://localhost:5173";
 

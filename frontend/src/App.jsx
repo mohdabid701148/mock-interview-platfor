@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
+import { useAuth } from "./hooks/useAuth";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -19,11 +20,23 @@ import History from "./pages/History";
 
 function App() {
   const location = useLocation();
+  const { user, loading } = useAuth();
 
   const state = location.state;
   const backgroundLocation = state?.backgroundLocation;
 
-  const isAuthenticated = Boolean(localStorage.getItem("accessToken"));
+  const isAuthenticated = Boolean(user);
+
+  // While auth is initializing, show nothing to prevent redirect flicker
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="rounded-2xl bg-slate-900 px-6 py-4 shadow-xl">
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
