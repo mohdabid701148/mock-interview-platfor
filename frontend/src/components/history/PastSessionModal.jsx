@@ -10,7 +10,9 @@ import {
   Calendar,
   Sparkles,
   User,
+  FileText,
 } from "lucide-react";
+import QuestionPanel from "../rooms/QuestionPanel";
 
 const fileExtensions = {
   javascript: "js",
@@ -77,7 +79,7 @@ const formatDateTime = (value) => {
 };
 
 const PastSessionModal = ({ feedback, onClose, currentUser }) => {
-  const [activeTab, setActiveTab] = useState("code"); // 'code' | 'evaluation'
+  const [activeTab, setActiveTab] = useState("code"); // 'code' | 'evaluation' | 'question'
   
   const room = feedback?.room || {};
   const codeState = room?.codeState || {};
@@ -159,11 +161,32 @@ const PastSessionModal = ({ feedback, onClose, currentUser }) => {
             <Award size={16} />
             Candidate Evaluation
           </button>
+          {room?.attachedQuestion && (
+            <button
+              onClick={() => setActiveTab("question")}
+              className={`flex items-center gap-2 border-b-2 px-4 py-4 text-sm font-semibold transition cursor-pointer ${
+                activeTab === "question"
+                  ? "border-slate-900 text-slate-900 dark:border-white dark:text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white"
+              }`}
+            >
+              <FileText size={16} />
+              Interview Question
+            </button>
+          )}
         </div>
 
         {/* Modal Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 min-h-0">
-          {activeTab === "code" ? (
+        <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-slate-50 dark:bg-[#111]">
+          {activeTab === "question" ? (
+            <div className="mx-auto h-full max-w-4xl">
+              <QuestionPanel 
+                room={room} 
+                isInterviewer={false} // Disable edit controls in history view
+                onOpenAttachModal={() => {}} 
+              />
+            </div>
+          ) : activeTab === "code" ? (
             <div className="flex h-full flex-col gap-4">
               {languagesWithCode.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center text-center">

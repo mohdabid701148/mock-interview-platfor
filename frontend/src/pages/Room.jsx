@@ -28,6 +28,8 @@ import { feedbackService } from "../services/feedback.service";
 import { useSocket } from "../hooks/useSocket";
 import { useAuth } from "../hooks/useAuth";
 import CodeEditor from "../components/editor/CodeEditor";
+import AttachQuestionModal from "../components/rooms/AttachQuestionModal";
+import QuestionPanel from "../components/rooms/QuestionPanel";
 
 const getRoomFromResponse = (res) => {
   return res?.data?.room || res?.data || res?.room || res;
@@ -178,6 +180,7 @@ const Room = () => {
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
   const [socketStatus, setSocketStatus] = useState("connecting");
+  const [isAttachModalOpen, setIsAttachModalOpen] = useState(false);
 
   // Feedback & Evaluation States
   const [feedback, setFeedback] = useState(null);
@@ -381,12 +384,19 @@ const Room = () => {
       }
     };
 
+    const handleQuestionUpdated = (data) => {
+      if (data?.attachedQuestion) {
+        setRoom((prev) => prev ? { ...prev, attachedQuestion: data.attachedQuestion } : prev);
+      }
+    };
+
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
     socket.on("connect_error", handleConnectError);
     socket.on("room-users", handleRoomUsers);
     socket.on("socket-error", handleSocketError);
     socket.on("room-updated", handleRoomUpdated);
+    socket.on("question-updated", handleQuestionUpdated);
 
     const handleFeedbackSubmitted = (data) => {
       if (data?.roomId === socketRoomId) {
@@ -416,9 +426,16 @@ const Room = () => {
       socket.off("room-users", handleRoomUsers);
       socket.off("socket-error", handleSocketError);
       socket.off("room-updated", handleRoomUpdated);
+      socket.off("question-updated", handleQuestionUpdated);
       socket.off("feedback-submitted", handleFeedbackSubmitted);
     };
   }, [socket, socketRoomId, isRoomLoaded]);
+
+  const handleAttachQuestion = (questionData) => {
+    if (socket && socketRoomId) {
+      socket.emit("question-attached", { roomId: socketRoomId, questionData });
+    }
+  };
 
   const handleStartInterview = async () => {
     try {
@@ -788,11 +805,20 @@ const Room = () => {
           </section>
 
           {roomStatus === "active" && (
-            <div className="mt-6">
-              <CodeEditor
-                roomId={socketRoomId}
-                initialLanguage={room?.language || "javascript"}
-              />
+            <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-6 h-[700px]">
+              <div className="lg:col-span-2 h-full">
+                <QuestionPanel 
+                  room={room} 
+                  isInterviewer={isInterviewer} 
+                  onOpenAttachModal={() => setIsAttachModalOpen(true)} 
+                />
+              </div>
+              <div className="lg:col-span-3 h-full rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-[#2a2a2a]">
+                <CodeEditor
+                  roomId={socketRoomId}
+                  initialLanguage={room?.language || "javascript"}
+                />
+              </div>
             </div>
           )}
 
@@ -1157,6 +1183,12 @@ const Room = () => {
           </section>
         </main>
       </div>
+
+      <AttachQuestionModal
+        isOpen={isAttachModalOpen}
+        onClose={() => setIsAttachModalOpen(false)}
+        onAttach={handleAttachQuestion}
+      />
     </div>
   );
 };

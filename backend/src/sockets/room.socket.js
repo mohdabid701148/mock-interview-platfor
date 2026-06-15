@@ -1,3 +1,5 @@
+import { Room } from "../models/room.model.js";
+
 const activeRooms = new Map(); // Map<roomId, Map<userId, { userId, username, email, socketIds: Set<socketId> }>>
 
 const getRoomUsers = (roomId) => {
@@ -112,6 +114,50 @@ export const registerRoomSocketHandlers = (io) => {
       io.to(roomId).emit("room-users", getRoomUsers(roomId));
 
       socket.currentRoomId = null;
+    });
+
+    socket.on("question-attached", async ({ roomId, questionData }) => {
+      try {
+        if (!roomId || !questionData) {
+          return socket.emit("socket-error", { message: "Room ID and Question Data are required" });
+        }
+
+        const room = await Room.findById(roomId);
+        if (!room) {
+          return socket.emit("socket-error", { message: "Room not found" });
+        }
+
+        // Authorization check
+        if (room.interviewer.toString() !== socket.user._id.toString()) {
+          return socket.emit("socket-error", { message: "Only the interviewer can attach a question" });
+        }
+
+        // Status check
+        if (room.status === "completed" || room.status === "cancelled") {
+          return socket.emit("socket-error", { message: "Cannot attach a question to a completed or cancelled room" });
+        }
+
+        // Update DB
+        room.attachedQuestion = {
+          source: questionData.source || null,
+          title: questionData.title || "Untitled Question",
+          difficulty: questionData.difficulty || "N/A",
+          url: questionData.url || "",
+          description: questionData.description || "",
+          tags: questionData.tags || [],
+          attachedBy: socket.user._id,
+          attachedAt: new Date()
+        };
+
+        await room.save();
+
+        // Broadcast to everyone in the room
+        io.to(roomId).emit("question-updated", { attachedQuestion: room.attachedQuestion });
+
+      } catch (error) {
+        console.error("Error in question-attached event:", error);
+        socket.emit("socket-error", { message: "Failed to attach question" });
+      }
     });
 
     socket.on("disconnect", () => {

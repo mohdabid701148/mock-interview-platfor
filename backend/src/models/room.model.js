@@ -85,6 +85,24 @@ const roomSchema = new mongoose.Schema(
       index: true,
     },
 
+    attachedQuestion: {
+      source: {
+        type: String,
+        enum: ["leetcode", "codeforces", "gfg", "custom", null],
+        default: null,
+      },
+      title: { type: String, trim: true },
+      difficulty: { type: String, enum: ["Easy", "Medium", "Hard", "N/A"] },
+      url: { type: String, trim: true },
+      description: { type: String },
+      tags: [{ type: String }],
+      attachedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      attachedAt: { type: Date },
+    },
+
     language: {
       type: String,
       default: "javascript",

@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import LanguageSelector from "./LanguageSelector";
 import { useSocket } from "../../hooks/useSocket";
+import { Play, Terminal } from "lucide-react";
+import CodeOutputPanel from "./CodeOutputPanel";
+import { codeExecutionService } from "../../services/codeExecution.service";
 
 const starterCode = {
   javascript: `function solution() {\n  \n}`,
@@ -32,6 +35,10 @@ const CodeEditor = ({ roomId, disabled = false }) => {
   const [language, setLanguage] = useState("javascript");
   const [codeByLanguage, setCodeByLanguage] = useState(starterCode);
   const [code, setCode] = useState(starterCode.javascript);
+
+  const [isOutputPanelOpen, setIsOutputPanelOpen] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionResult, setExecutionResult] = useState(null);
 
   const languageRef = useRef("javascript");
   const codeRef = useRef(starterCode.javascript);
@@ -193,6 +200,23 @@ const CodeEditor = ({ roomId, disabled = false }) => {
     }
   };
 
+  const handleRunCode = async () => {
+    setIsOutputPanelOpen(true);
+    setIsExecuting(true);
+    try {
+      const result = await codeExecutionService.runCode(language, code);
+      setExecutionResult(result.data);
+    } catch (err) {
+      setExecutionResult({
+        type: "runtime_error",
+        output: err.response?.data?.message || err.message || "Execution failed",
+        executionTimeMs: 0
+      });
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-[#2a2a2a] dark:bg-[#171717]">
       <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 dark:border-[#2a2a2a] md:flex-row md:items-center md:justify-between">
@@ -206,11 +230,33 @@ const CodeEditor = ({ roomId, disabled = false }) => {
           </p>
         </div>
 
-        <LanguageSelector language={language} onChange={handleLanguageChange} />
+        <div className="flex items-center gap-3">
+          <LanguageSelector language={language} onChange={handleLanguageChange} />
+          
+          <div className="flex items-center border border-slate-200 dark:border-[#2a2a2a] rounded-xl overflow-hidden shadow-sm">
+            <button
+              onClick={() => setIsOutputPanelOpen(!isOutputPanelOpen)}
+              className="flex items-center justify-center p-2.5 text-slate-500 hover:bg-slate-100 dark:text-gray-400 dark:hover:bg-[#2a2a2a] transition bg-white dark:bg-[#1a1a1a]"
+              title="Toggle Console"
+            >
+              <Terminal size={18} />
+            </button>
+            <div className="w-px h-6 bg-slate-200 dark:bg-[#2a2a2a]"></div>
+            <button
+              onClick={handleRunCode}
+              disabled={isExecuting || disabled}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Play size={16} className={isExecuting ? "animate-pulse" : ""} />
+              {isExecuting ? "Running..." : "Run"}
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="h-[520px]">
-        <Editor
+      <div className="flex flex-col h-[600px]">
+        <div className="flex-1 relative">
+          <Editor
           height="100%"
           language={language}
           path={`${roomId}-${language}.${fileExtensions[language] || "txt"}`}
@@ -228,6 +274,14 @@ const CodeEditor = ({ roomId, disabled = false }) => {
             insertSpaces: true,
             detectIndentation: false,
           }}
+        />
+        </div>
+        
+        <CodeOutputPanel
+          isOpen={isOutputPanelOpen}
+          onClose={() => setIsOutputPanelOpen(false)}
+          loading={isExecuting}
+          result={executionResult}
         />
       </div>
     </section>

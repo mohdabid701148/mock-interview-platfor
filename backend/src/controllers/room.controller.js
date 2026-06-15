@@ -14,7 +14,8 @@ const populateRoom = async (roomId) => {
     .populate("createdBy", "username email fullName")
     .populate("interviewer", "username email fullName")
     .populate("interviewee", "username email fullName")
-    .populate("participants.user", "username email fullName");
+    .populate("participants.user", "username email fullName")
+    .populate("attachedQuestion.attachedBy", "username email fullName");
 };
 
 const isRoomParticipant = (room, userId) => {

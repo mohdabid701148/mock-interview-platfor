@@ -43,3 +43,14 @@ export const generalLimiter = rateLimit({
   skip: (req) => req.path === "/health",
 });
 
+// Strict limits for code execution to prevent abuse
+export const codeExecutionLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 20,
+  message: {
+    success: false,
+    message: "Too many execution requests. Please wait a moment before trying again.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

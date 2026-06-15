@@ -8,6 +8,7 @@ import scheduleRouter from "./routes/schedule.routes.js";
 import roomRoutes from "./routes/room.routes.js";
 import feedbackRoutes from "./routes/feedback.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import codeExecutionRoutes from "./routes/codeExecution.routes.js";
 import { ApiError } from "./utils/ApiError.js";
 import {
   authLimiter,
@@ -90,6 +91,7 @@ app.use("/api/v1/rooms", roomScheduleLimiter, roomRoutes);
 app.use("/api/v1/schedule", roomScheduleLimiter, scheduleRouter);
 app.use("/api/v1/feedback", feedbackRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/code", codeExecutionRoutes);
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));
