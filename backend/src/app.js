@@ -18,6 +18,11 @@ import {
 
 const app = express();
 
+// Behind Render's proxy (and optionally Cloudflare): trust the first proxy hop so
+// express-rate-limit keys on the real client IP and secure cookies detect HTTPS
+// via X-Forwarded-Proto.
+app.set("trust proxy", 1);
+
 // Security Headers with Helmet (monaco-editor & socket.io compatibility)
 app.use(
   helmet({
@@ -63,8 +68,10 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true }));
+// 150kb body limit leaves headroom for ~100KB code submissions plus the JSON
+// wrapper, stdin, and test-case payload sent to /api/v1/code.
+app.use(express.json({ limit: "150kb" }));
+app.use(express.urlencoded({ extended: true, limit: "150kb" }));
 
 app.use(cookieParser());
 
@@ -79,10 +86,7 @@ app.use(
 app.use(generalLimiter);
 
 app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "OK",
-    message: "Server is running 🚀",
-  });
+  res.status(200).json({ status: "ok" });
 });
 
 // Route specific rate limiters applied
@@ -98,9 +102,6 @@ app.use((req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  console.log("ERROR HANDLER next type:", typeof next);
-  console.log("ERROR:", err);
-
   const statusCode = err.statusCode || 500;
 
   res.status(statusCode).json({

@@ -70,8 +70,6 @@ export const registerRoomSocketHandlers = (io) => {
       const roomUsersMap = activeRooms.get(roomId);
       const wasAlreadyInRoom = roomUsersMap && roomUsersMap.has(userId);
 
-      console.log(`${socket.user.username} joined room ${roomId}`);
-
       socket.join(roomId);
       socket.currentRoomId = roomId;
 
@@ -92,8 +90,6 @@ export const registerRoomSocketHandlers = (io) => {
       if (!roomId) {
         return;
       }
-
-      console.log(`${socket.user.username} left room ${roomId}`);
 
       socket.leave(roomId);
 
@@ -144,9 +140,12 @@ export const registerRoomSocketHandlers = (io) => {
           difficulty: questionData.difficulty || "N/A",
           url: questionData.url || "",
           description: questionData.description || "",
-          tags: questionData.tags || [],
+          tags: Array.isArray(questionData.tags) ? questionData.tags : [],
+          examples: Array.isArray(questionData.examples)
+            ? questionData.examples.filter((e) => e?.input?.trim()).slice(0, 2)
+            : [],
           attachedBy: socket.user._id,
-          attachedAt: new Date()
+          attachedAt: new Date(),
         };
 
         await room.save();
@@ -166,8 +165,6 @@ export const registerRoomSocketHandlers = (io) => {
       if (!roomId) {
         return;
       }
-
-      console.log(`${socket.user.username} disconnected from room ${roomId}`);
 
       const userId = socket.user._id.toString();
       removeUserFromRoom(roomId, userId, socket.id);

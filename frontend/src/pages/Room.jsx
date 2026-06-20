@@ -27,9 +27,8 @@ import { roomService } from "../services/room.service";
 import { feedbackService } from "../services/feedback.service";
 import { useSocket } from "../hooks/useSocket";
 import { useAuth } from "../hooks/useAuth";
-import CodeEditor from "../components/editor/CodeEditor";
 import AttachQuestionModal from "../components/rooms/AttachQuestionModal";
-import QuestionPanel from "../components/rooms/QuestionPanel";
+import InterviewWorkspace from "../components/editor/InterviewWorkspace";
 
 const getRoomFromResponse = (res) => {
   return res?.data?.room || res?.data || res?.room || res;
@@ -805,20 +804,24 @@ const Room = () => {
           </section>
 
           {roomStatus === "active" && (
-            <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-6 h-[700px]">
-              <div className="lg:col-span-2 h-full">
-                <QuestionPanel 
-                  room={room} 
-                  isInterviewer={isInterviewer} 
-                  onOpenAttachModal={() => setIsAttachModalOpen(true)} 
-                />
-              </div>
-              <div className="lg:col-span-3 h-full rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-[#2a2a2a]">
-                <CodeEditor
-                  roomId={socketRoomId}
-                  initialLanguage={room?.language || "javascript"}
-                />
-              </div>
+            <div className="mt-6">
+              <InterviewWorkspace
+                room={room}
+                roomCode={roomCode}
+                isInterviewer={isInterviewer}
+                currentRole={currentRole}
+                socketRoomId={socketRoomId}
+                canStartInterview={canStartInterview}
+                canEndInterview={canEndInterview}
+                onStart={handleStartInterview}
+                onComplete={handleCompleteInterview}
+                onLeave={handleLeave}
+                onOpenAttachModal={() => setIsAttachModalOpen(true)}
+                message={message}
+                activeUsers={activeUsers}
+                participants={participants}
+                roomStatus={roomStatus}
+              />
             </div>
           )}
 

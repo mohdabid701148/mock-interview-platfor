@@ -5,4 +5,9 @@ export const codeExecutionService = {
     const res = await axiosInstance.post("/code/run", { language, code, stdin });
     return res.data;
   },
+
+  runTestCases: async (language, code, testCases) => {
+    const res = await axiosInstance.post("/code/test", { language, code, testCases });
+    return res.data;
+  },
 };

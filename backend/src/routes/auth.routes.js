@@ -8,8 +8,6 @@ router.route("/register").post(registerUser);
 router.route("/login").post(loginUser);
 router.route("/refresh-token").post(refreshAccessToken);
 router.route("/logout").post(verifyJWT,logoutUser);
-// i used typeof for debugging
-console.log("TYPE:", typeof registerUser);
 router.route("/current-user").get(verifyJWT, getProfile);
 router.route("/update").patch(verifyJWT, userUpdate);
 

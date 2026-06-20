@@ -96,6 +96,13 @@ const roomSchema = new mongoose.Schema(
       url: { type: String, trim: true },
       description: { type: String },
       tags: [{ type: String }],
+      examples: [
+        {
+          input: { type: String, default: "" },
+          output: { type: String, default: "" },
+          _id: false,
+        },
+      ],
       attachedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

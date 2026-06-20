@@ -103,28 +103,15 @@ export const initializeSocket = (server) => {
         userSocketRegistry.set(userId, new Set());
       }
       userSocketRegistry.get(userId).add(socket.id);
-      console.log(`Registered socket ${socket.id} for user ${userId}`);
     }
 
-    console.log("Socket connected:", {
-      socketId: socket.id,
-      userId,
-      username: socket.user?.username,
-    });
-
-    socket.on("disconnect", (reason) => {
+    socket.on("disconnect", () => {
       if (userId && userSocketRegistry.has(userId)) {
         userSocketRegistry.get(userId).delete(socket.id);
         if (userSocketRegistry.get(userId).size === 0) {
           userSocketRegistry.delete(userId);
         }
-        console.log(`Unregistered socket ${socket.id} for user ${userId}`);
       }
-
-      console.log("Socket disconnected:", {
-        socketId: socket.id,
-        reason,
-      });
     });
   });
 

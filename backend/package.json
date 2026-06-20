@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "predev": "node -e \"const {execSync}=require('child_process');try{const out=execSync('netstat -ano').toString();const line=out.split('\\n').find(l=>l.includes(':5000')&&l.includes('LISTENING'));if(line){const pid=line.trim().split(/\\s+/).pop();execSync('taskkill /F /PID '+pid);console.log('[predev] Freed port 5000 (PID '+pid+')')}}catch(e){}\"",
     "dev": "nodemon server.js",
     "start": "node server.js"
   },

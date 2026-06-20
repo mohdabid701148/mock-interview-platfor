@@ -12,7 +12,6 @@ const cookieOptions = {
 
 
 const registerUser = asyncHandler(async (req, res) => {
-  console.log("BODY:", req.body);
 
   const { email, username, password } = req.body;
 
@@ -166,7 +165,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   await user.save({
     validateBeforeSave: false,
   });
-  console.log("token refreshed")
   return res
     .status(200)
     .cookie("accessToken", newAccessToken, cookieOptions)
@@ -201,7 +199,6 @@ const logoutUser = asyncHandler(async (req, res) => {
       returnDocument: "after",
     }
   );
-console.log("Logged out successfully");
   return res
     .status(200)
     .clearCookie("accessToken", cookieOptions)
