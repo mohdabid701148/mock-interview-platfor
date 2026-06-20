@@ -22,3 +22,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build outputs
+build
+coverage
+
+# OS files
+.DS_Store
+Thumbs.db
