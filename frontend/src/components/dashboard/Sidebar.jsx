@@ -89,7 +89,7 @@ const Sidebar = () => {
         </NavLink>
         <NavLink to="/rooms" className={linkClass}>
           <Video size={18} />
-          Rooms
+          Sessions
         </NavLink>
         <NavLink to="/schedule" className={linkClass}>
           <CalendarDays size={18} />

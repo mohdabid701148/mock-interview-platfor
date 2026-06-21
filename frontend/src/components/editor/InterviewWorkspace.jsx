@@ -159,7 +159,7 @@ const InterviewWorkspace = ({
           <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
             <Hash size={12} className="text-slate-600" />
             <span className="text-slate-200 font-medium">{room?.roomCode || roomCode}</span>
-            <button onClick={handleCopy} className="hover:text-slate-200 transition ml-0.5" title="Copy room code">
+            <button onClick={handleCopy} className="hover:text-slate-200 transition ml-0.5" title="Copy session code">
               {copied
                 ? <CheckCircle2 size={12} className="text-emerald-400" />
                 : <Copy size={12} />}

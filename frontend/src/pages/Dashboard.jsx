@@ -78,19 +78,19 @@ const Dashboard = () => {
 
   const stats = [
     {
-      title: "Rooms Joined",
+      title: "Sessions Joined",
       value: rooms.length,
-      subtitle: "All rooms you are part of",
+      subtitle: "All sessions you are part of",
       icon: Video,
     },
     {
-      title: "Active Rooms",
+      title: "Active Sessions",
       value: activeRooms.length,
       subtitle: "Currently in progress",
       icon: Activity,
     },
     {
-      title: "Rooms Created",
+      title: "Sessions Created",
       value: createdRooms.length,
       subtitle: "Created by you",
       icon: Users,
@@ -142,7 +142,7 @@ const Dashboard = () => {
                     onClick={() => navigate("/rooms")}
                     className="app-btn-primary flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition"
                   >
-                    Open Rooms
+                    Open Sessions
                     <ArrowRight size={18} />
                   </button>
 
@@ -228,9 +228,9 @@ const Dashboard = () => {
                   <div className="app-panel rounded-2xl p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-sm app-text">Room</p>
+                        <p className="text-sm app-text">Session</p>
                         <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
-                          {nextInterview.roomId?.title || "Untitled Room"}
+                          {nextInterview.roomId?.title || "Untitled Session"}
                         </h3>
 
                         <p className="mt-3 text-sm app-text">
@@ -267,7 +267,7 @@ const Dashboard = () => {
                 <div className="mb-6 flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
-                      Room Snapshot
+                      Session Snapshot
                     </h2>
                     <p className="mt-1 text-sm app-text">
                       A quick overview of your latest rooms
@@ -289,7 +289,7 @@ const Dashboard = () => {
                       No rooms yet
                     </h3>
                     <p className="mt-2 text-sm app-text">
-                      Open the Rooms workspace to create or join your first room.
+                      Open the Sessions workspace to create or join your first session.
                     </p>
                   </div>
                 ) : (
@@ -301,7 +301,7 @@ const Dashboard = () => {
                       >
                         <div>
                           <h3 className="font-medium text-slate-900 dark:text-white">
-                            {room.title || "Untitled Room"}
+                            {room.title || "Untitled Session"}
                           </h3>
                           <p className="mt-1 text-sm app-text">
                             {room.status === "completed" ? "Completed" : "Active"}
@@ -332,7 +332,7 @@ const Dashboard = () => {
                     onClick={() => navigate("/rooms")}
                     className="app-btn-primary flex w-full items-center justify-between rounded-2xl px-5 py-4 text-sm font-semibold transition"
                   >
-                    Open Rooms Workspace
+                    Open Sessions Workspace
                     <ArrowRight size={18} />
                   </button>
 
@@ -348,19 +348,19 @@ const Dashboard = () => {
 
               <div className="app-card rounded-3xl p-6 shadow-sm">
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  Room Health
+                  Session Health
                 </h2>
 
                 <div className="mt-5 space-y-4">
                   <div className="app-panel rounded-2xl px-4 py-4">
-                    <p className="text-sm app-text">Active Rooms</p>
+                    <p className="text-sm app-text">Active Sessions</p>
                     <h3 className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
                       {activeRooms.length}
                     </h3>
                   </div>
 
                   <div className="app-panel rounded-2xl px-4 py-4">
-                    <p className="text-sm app-text">Completed Rooms</p>
+                    <p className="text-sm app-text">Completed Sessions</p>
                     <h3 className="mt-1 text-lg font-semibold text-slate-900 dark:text-white">
                       {completedRooms.length}
                     </h3>

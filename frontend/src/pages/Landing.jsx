@@ -93,7 +93,7 @@ const Landing = () => {
                 <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
-                <span className="ml-2 font-mono text-xs text-slate-500">mockmate.app/room/HXYPQP</span>
+                <span className="ml-2 font-mono text-xs text-slate-500">mockmate.app/session/HXYPQP</span>
                 <div className="ml-auto flex -space-x-1.5">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[#0d1117] bg-blue-500 text-[10px] font-bold text-white">A</span>
                   <span className="flex h-5 w-5 items-center justify-center rounded-full border border-[#0d1117] bg-emerald-500 text-[10px] font-bold text-white">S</span>
@@ -187,9 +187,9 @@ const Landing = () => {
 
           {[
             { icon: Terminal, title: "Code that runs", desc: "Run JS, Python, Java, C++ and TS with your own inputs. Zero setup, no local environment." },
-            { icon: Users, title: "One code, two roles", desc: "Share a room code. Your peer joins as interviewer or interviewee — then you swap." },
+            { icon: Users, title: "One code, two roles", desc: "Share a session code. Your peer joins as interviewer or interviewee — then you swap." },
             { icon: MessageSquareText, title: "Scorecards, not vibes", desc: "Rate problem-solving, communication, and more, with written notes you can revisit." },
-            { icon: CalendarClock, title: "Plan it or wing it", desc: "Schedule a session with reminders, or just spin up a room right now." },
+            { icon: CalendarClock, title: "Plan it or wing it", desc: "Schedule a session with reminders, or just spin up a session right now." },
             { icon: History, title: "Everything saved", desc: "Past sessions, the question, the code, and the feedback — all kept in your history." },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:bg-white/[0.05]">
@@ -210,7 +210,7 @@ const Landing = () => {
 
           <div className="mt-10 grid gap-8 md:grid-cols-3">
             {[
-              { n: "01", t: "Create a room", d: "Make a session and send the code to a friend. One of you interviews, the other solves." },
+              { n: "01", t: "Create a session", d: "Make a session and send the code to a friend. One of you interviews, the other solves." },
               { n: "02", t: "Work the problem", d: "Attach a question, code in the shared editor, run it, and talk through your approach." },
               { n: "03", t: "Trade feedback", d: "Score the session and leave notes. It's saved so you can see yourself improve." },
             ].map((s, i) => (
@@ -253,7 +253,7 @@ const Landing = () => {
           <div className="mt-8 divide-y divide-white/10 border-y border-white/10">
             {[
               { q: "Is it actually free?", a: "Yes. It runs on free-tier hosting and there's no paid plan — sign up and use it." },
-              { q: "Do I need to install anything?", a: "No. The editor and code execution run in your browser. Just open a room and go." },
+              { q: "Do I need to install anything?", a: "No. The editor and code execution run in your browser. Just open a session and go." },
               { q: "Who plays the interviewer?", a: "You and a peer. One hosts and asks the question, the other solves — then you switch roles." },
               { q: "Which languages can I run?", a: "JavaScript, Python, Java, C++, and TypeScript, each with your own test input." },
               { q: "Do I need to verify my email?", a: "Yes — a quick 6-digit code keeps accounts real. It takes a few seconds." },

@@ -246,7 +246,7 @@ const Room = () => {
 
       setRoom(getRoomFromResponse(res));
     } catch (error) {
-      setMessage(error?.response?.data?.message || "Failed to load room");
+      setMessage(error?.response?.data?.message || "Failed to load session");
     } finally {
       setLoading(false);
     }
@@ -373,7 +373,7 @@ const Room = () => {
 
         // If the room was just cancelled, show message and redirect
         if (data.room.status === "cancelled") {
-          setMessage("This interview has been cancelled. Redirecting to rooms...");
+          setMessage("This interview has been cancelled. Redirecting to sessions...");
           setTimeout(() => {
             navigate("/rooms");
           }, 4000);
@@ -486,7 +486,7 @@ const Room = () => {
 
       navigate("/rooms");
     } catch (error) {
-      setMessage(error?.response?.data?.message || "Failed to leave room");
+      setMessage(error?.response?.data?.message || "Failed to leave session");
     }
   };
 
@@ -532,7 +532,7 @@ const Room = () => {
                 className="mt-6 app-btn-secondary inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-medium transition"
               >
                 <ArrowLeft size={17} />
-                Back to Rooms
+                Back to Sessions
               </button>
             </div>
           </main>
@@ -600,7 +600,7 @@ const Room = () => {
                 <div className="mt-4 flex flex-wrap items-center gap-2 app-text">
                   <Hash size={18} />
 
-                  <span className="text-sm">Room Code:</span>
+                  <span className="text-sm">Session Code:</span>
 
                   <span className="font-semibold text-slate-800 dark:text-gray-200">
                     {room?.roomCode || roomCode}
@@ -624,7 +624,7 @@ const Room = () => {
                   className="app-btn-secondary flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-medium transition"
                 >
                   <ArrowLeft size={17} />
-                  Back to Rooms
+                  Back to Sessions
                 </button>
 
                 {room?.meetingLink && (
@@ -666,7 +666,7 @@ const Room = () => {
                     className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
                   >
                     <LogOut size={17} />
-                    Leave Room
+                    Leave Session
                   </button>
                 )}
 
@@ -676,7 +676,7 @@ const Room = () => {
                     onClick={() => navigate("/rooms")}
                     className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                   >
-                    Go to Rooms
+                    Go to Sessions
                   </button>
                 )}
               </div>
@@ -701,7 +701,7 @@ const Room = () => {
                   className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-red-700"
                 >
                   <ArrowLeft size={17} />
-                  Go to Rooms
+                  Go to Sessions
                 </button>
               </div>
             )}
@@ -1154,7 +1154,7 @@ const Room = () => {
                 </div>
 
                 <div className="border-b border-slate-100 pb-5 dark:border-[#2a2a2a]">
-                  <p className="text-sm app-text">Room Status</p>
+                  <p className="text-sm app-text">Session Status</p>
 
                   <h3 className="mt-2 text-lg font-semibold capitalize text-slate-900 dark:text-white">
                     {roomStatus}

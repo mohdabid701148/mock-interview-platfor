@@ -130,7 +130,7 @@ const Login = () => {
                 </h3>
 
                 <p className="mt-2 text-sm text-slate-300">
-                  Interview Rooms Created
+                  Interview Sessions Created
                 </p>
               </div>
 

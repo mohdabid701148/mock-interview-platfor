@@ -18,7 +18,7 @@ const Navbar = ({
   onCreateRoom,
   searchValue,
   onSearchChange,
-  placeholder = "Search rooms...",
+  placeholder = "Search sessions...",
 }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -179,7 +179,7 @@ const Navbar = ({
             "
           >
             <Plus size={16} />
-            New Room
+            New Session
           </button>
         )}
 

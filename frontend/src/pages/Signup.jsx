@@ -121,7 +121,7 @@ const Signup = () => {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-md">
                 
                 <h3 className="text-3xl font-bold">
-                  Rooms
+                  Sessions
                 </h3>
 
                 <p className="mt-2 text-sm text-slate-300">

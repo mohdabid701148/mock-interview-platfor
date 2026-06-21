@@ -49,7 +49,7 @@ const ParticipantList = ({ participants = [] }) => {
           </h3>
 
           <p className="mt-1 text-sm app-text">
-            Interview roles and room members
+            Interview roles and session members
           </p>
         </div>
 
@@ -69,7 +69,7 @@ const ParticipantList = ({ participants = [] }) => {
           </h4>
 
           <p className="mt-2 text-sm app-text">
-            Share the room code to invite an interviewee.
+            Share the session code to invite an interviewee.
           </p>
         </div>
       ) : (

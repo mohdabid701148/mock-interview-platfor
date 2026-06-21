@@ -242,7 +242,7 @@ const History = () => {
                 </h3>
                 <p className="mt-2 text-sm app-text max-w-md">
                   {feedbacks.length === 0
-                    ? "You haven't participated in any completed mock interviews yet. Create or join a room and finish the session to build your history."
+                    ? "You haven't participated in any completed mock interviews yet. Create or join a session and finish it to build your history."
                     : "No interview logs match your selected filter criteria. Adjust search parameters to view matching sessions."}
                 </p>
               </div>
