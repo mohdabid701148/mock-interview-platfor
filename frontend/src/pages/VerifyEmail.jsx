@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { authService } from "../services/auth.service";
+import Logo from "../components/Logo";
 
 const VerifyEmail = () => {
   const location = useLocation();
@@ -48,6 +49,9 @@ const VerifyEmail = () => {
     <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] px-6 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
+          <div className="mb-3 flex justify-center">
+            <Logo size={48} />
+          </div>
           <h1 className="text-3xl font-bold text-slate-900">MockMate</h1>
           <p className="mt-1 text-sm text-slate-500">
             Peer to Peer Mock Interview Platform

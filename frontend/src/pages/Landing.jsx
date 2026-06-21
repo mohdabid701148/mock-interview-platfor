@@ -9,6 +9,7 @@ import {
   History,
   ShieldCheck,
 } from "lucide-react";
+import Logo from "../components/Logo";
 
 // Reusing the same Unsplash imagery + slate overlay treatment as Login/Signup
 // so the landing page matches the rest of the app's grading.
@@ -62,12 +63,7 @@ const Landing = () => {
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-base font-bold sm:h-9 sm:w-9 sm:text-lg">
-              M
-            </div>
-            <span className="text-base font-bold sm:text-lg">MockMate</span>
-          </div>
+          <Logo size={34} withText textClassName="text-base font-bold sm:text-lg" />
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Link
@@ -245,9 +241,7 @@ const Landing = () => {
       <footer className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-center sm:flex-row sm:px-6 sm:text-left">
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-sm font-bold text-white">
-              M
-            </div>
+            <Logo size={26} />
             MockMate © {new Date().getFullYear()}
           </div>
           <div className="flex items-center gap-5 text-sm text-slate-400">

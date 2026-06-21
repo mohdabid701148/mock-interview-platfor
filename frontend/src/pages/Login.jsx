@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { authService } from "../services/auth.service";
+import Logo from "../components/Logo";
 
 const Login = () => {
   const { login } = useAuth();
@@ -95,9 +96,7 @@ const Login = () => {
           
           <div>
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-xl font-bold backdrop-blur-md">
-                M
-              </div>
+              <Logo size={48} />
 
               <div>
                 <h1 className="text-2xl font-bold">
