@@ -285,27 +285,29 @@ const CodeEditor = ({
           {Toolbar}
         </div>
 
-        {/* Editor */}
-        <div className="flex-1 relative min-h-0">
-          <Editor
-            height="100%"
-            language={language}
-            path={`${roomId}-${language}.${fileExtensions[language] || "txt"}`}
-            value={code}
-            theme="vs-dark"
-            onChange={handleCodeChange}
-            options={{
-              readOnly: disabled,
-              minimap: { enabled: false },
-              fontSize: 14,
-              wordWrap: "on",
-              automaticLayout: true,
-              scrollBeyondLastLine: false,
-              tabSize: 4,
-              insertSpaces: true,
-              detectIndentation: false,
-            }}
-          />
+        {/* Editor — Monaco pinned to an absolute box so it can't grow the layout */}
+        <div className="flex-1 relative min-h-0 overflow-hidden">
+          <div className="absolute inset-0">
+            <Editor
+              height="100%"
+              language={language}
+              path={`${roomId}-${language}.${fileExtensions[language] || "txt"}`}
+              value={code}
+              theme="vs-dark"
+              onChange={handleCodeChange}
+              options={{
+                readOnly: disabled,
+                minimap: { enabled: false },
+                fontSize: 14,
+                wordWrap: "on",
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                tabSize: 4,
+                insertSpaces: true,
+                detectIndentation: false,
+              }}
+            />
+          </div>
         </div>
 
         {BottomPanel}
@@ -328,27 +330,29 @@ const CodeEditor = ({
         {Toolbar}
       </div>
 
-      <div className="flex flex-col" style={{ height: isPanelOpen ? 600 : 500 }}>
-        <div className="flex-1 relative min-h-0">
-          <Editor
-            height="100%"
-            language={language}
-            path={`${roomId}-${language}.${fileExtensions[language] || "txt"}`}
-            value={code}
-            theme="vs-dark"
-            onChange={handleCodeChange}
-            options={{
-              readOnly: disabled,
-              minimap: { enabled: false },
-              fontSize: 14,
-              wordWrap: "on",
-              automaticLayout: true,
-              scrollBeyondLastLine: false,
-              tabSize: 4,
-              insertSpaces: true,
-              detectIndentation: false,
-            }}
-          />
+      <div className="flex flex-col overflow-hidden" style={{ height: isPanelOpen ? 600 : 500 }}>
+        <div className="flex-1 relative min-h-0 overflow-hidden">
+          <div className="absolute inset-0">
+            <Editor
+              height="100%"
+              language={language}
+              path={`${roomId}-${language}.${fileExtensions[language] || "txt"}`}
+              value={code}
+              theme="vs-dark"
+              onChange={handleCodeChange}
+              options={{
+                readOnly: disabled,
+                minimap: { enabled: false },
+                fontSize: 14,
+                wordWrap: "on",
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                tabSize: 4,
+                insertSpaces: true,
+                detectIndentation: false,
+              }}
+            />
+          </div>
         </div>
         {BottomPanel}
       </div>
