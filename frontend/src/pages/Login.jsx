@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { authService } from "../services/auth.service";
 
 const Login = () => {
   const { login } = useAuth();
@@ -14,6 +15,10 @@ const Login = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // When the backend returns 403 (email not verified) we surface a resend option.
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendState, setResendState] = useState({ loading: false, msg: "" });
 
   const handleChange = (e) => {
     setForm({
@@ -28,12 +33,18 @@ const Login = () => {
     try {
       setLoading(true);
       setError("");
+      setNeedsVerification(false);
+      setResendState({ loading: false, msg: "" });
 
       await login(form);
 
       navigate("/dashboard");
 
     } catch (err) {
+
+      if (err?.response?.status === 403) {
+        setNeedsVerification(true);
+      }
 
       setError(
         err?.response?.data?.message || "Login failed"
@@ -42,6 +53,24 @@ const Login = () => {
     } finally {
 
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      setResendState({ loading: true, msg: "" });
+      const res = await authService.resendVerification(form.email);
+      setResendState({
+        loading: false,
+        msg: res?.message || "Verification email sent.",
+      });
+    } catch (err) {
+      setResendState({
+        loading: false,
+        msg:
+          err?.response?.data?.message ||
+          "Could not resend right now. Please try again later.",
+      });
     }
   };
 
@@ -150,6 +179,23 @@ const Login = () => {
             {error && (
               <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
+              </div>
+            )}
+
+            {needsVerification && (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p>Your email isn’t verified yet. Check your inbox for the link.</p>
+                {resendState.msg && (
+                  <p className="mt-2 text-xs text-amber-700">{resendState.msg}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendState.loading || !form.email}
+                  className="mt-3 w-full rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
+                >
+                  {resendState.loading ? "Sending..." : "Resend verification email"}
+                </button>
               </div>
             )}
 

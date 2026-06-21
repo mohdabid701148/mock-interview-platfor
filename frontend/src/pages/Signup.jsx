@@ -1,19 +1,19 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Mail,
   Lock,
   User,
   ArrowRight,
+  MailCheck,
 } from "lucide-react";
 
 import { useAuth } from "../hooks/useAuth";
+import { authService } from "../services/auth.service";
 
 const Signup = () => {
 
   const { register } = useAuth();
-
-  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     username: "",
@@ -24,6 +24,11 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState("");
+
+  // After a successful signup we show a "check your inbox" screen instead of
+  // navigating to login, because the account isn't usable until verified.
+  const [submitted, setSubmitted] = useState(false);
+  const [resendState, setResendState] = useState({ loading: false, msg: "" });
 
   const handleChange = (e) => {
 
@@ -45,7 +50,7 @@ const Signup = () => {
 
       await register(form);
 
-      navigate("/login");
+      setSubmitted(true);
 
     } catch (err) {
 
@@ -57,6 +62,24 @@ const Signup = () => {
     } finally {
 
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      setResendState({ loading: true, msg: "" });
+      const res = await authService.resendVerification(form.email);
+      setResendState({
+        loading: false,
+        msg: res?.message || "Verification email sent again.",
+      });
+    } catch (err) {
+      setResendState({
+        loading: false,
+        msg:
+          err?.response?.data?.message ||
+          "Could not resend right now. Please try again later.",
+      });
     }
   };
 
@@ -152,6 +175,45 @@ const Signup = () => {
 
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/60">
 
+            {submitted ? (
+              <div className="text-center">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
+                  <MailCheck size={34} className="text-emerald-500" />
+                </div>
+
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Check your inbox
+                </h2>
+
+                <p className="mt-3 text-sm text-slate-500">
+                  We sent a verification link to{" "}
+                  <span className="font-semibold text-slate-700">{form.email}</span>.
+                  Click it to activate your account. The link expires in 24 hours.
+                </p>
+
+                {resendState.msg && (
+                  <p className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                    {resendState.msg}
+                  </p>
+                )}
+
+                <button
+                  onClick={handleResend}
+                  disabled={resendState.loading}
+                  className="mt-6 w-full rounded-2xl border border-slate-300 px-4 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {resendState.loading ? "Resending..." : "Resend verification email"}
+                </button>
+
+                <Link
+                  to="/login"
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Go to Login
+                </Link>
+              </div>
+            ) : (
+            <>
             <div>
               <h2 className="text-3xl font-bold text-slate-900">
                 Create Account
@@ -274,6 +336,8 @@ const Signup = () => {
                 Login
               </Link>
             </p>
+            </>
+            )}
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { useAuth } from "./hooks/useAuth";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import VerifyEmail from "./pages/VerifyEmail";
 import Dashboard from "./pages/Dashboard";
 import Rooms from "./pages/Rooms";
 import Room from "./pages/Room";
@@ -73,6 +74,9 @@ function App() {
             )
           }
         />
+
+        {/* Public — must work whether or not the user is logged in */}
+        <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />

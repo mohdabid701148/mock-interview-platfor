@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const userSchema = new mongoose.Schema(
   {
@@ -70,7 +71,23 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
-    
+    // ─── Email verification ───────────────────────────────────────────
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Stores only the SHA-256 HASH of the verification token, never the raw token.
+    emailVerificationToken: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
+    emailVerificationExpiry: {
+      type: Date,
+      default: null,
+    },
 
     notificationsEnabled: {
       type: Boolean,
@@ -121,6 +138,22 @@ userSchema.methods.generateRefreshToken = function () {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
     }
   );
+};
+
+// Generates a high-entropy verification token. Returns the RAW token (sent in the
+// email link) but persists only its SHA-256 hash + a 24h expiry on the document.
+// Caller is responsible for saving the document afterwards.
+userSchema.methods.generateEmailVerificationToken = function () {
+  const rawToken = crypto.randomBytes(32).toString("hex");
+
+  this.emailVerificationToken = crypto
+    .createHash("sha256")
+    .update(rawToken)
+    .digest("hex");
+
+  this.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
+  return rawToken;
 };
 
 export const User =

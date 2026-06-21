@@ -43,6 +43,23 @@ export const generalLimiter = rateLimit({
   skip: (req) => req.path === "/health",
 });
 
+// Resend-verification: max 3 requests per hour, keyed by email (not IP) so one
+// person can't spam a victim's inbox or burn through their own retries.
+export const resendVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  keyGenerator: (req) =>
+    `resend:${(req.body?.email || "").toLowerCase().trim()}`,
+  message: {
+    success: false,
+    message: "Too many verification emails requested. Please try again in an hour.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // We key by email, not IP, so the default IPv6 key check doesn't apply.
+  validate: { keyGeneratorIpFallback: false },
+});
+
 // Strict limits for code execution to prevent abuse
 export const codeExecutionLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes

@@ -105,6 +105,24 @@ export const validate = (schema) => (req, res, next) => {
 // Schemas Definitions
 // ----------------------------------------------------
 
+export const resendVerificationSchema = {
+  body: {
+    email: {
+      required: true,
+      type: "string",
+      maxLength: 254,
+    },
+  },
+};
+
+export const verifyEmailParamSchema = {
+  params: {
+    token: {
+      required: true,
+    },
+  },
+};
+
 export const createRoomSchema = {
   body: {
     title: {

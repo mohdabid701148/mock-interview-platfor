@@ -1,10 +1,10 @@
+// Load .env FIRST, before any other module is imported, so env vars are
+// available to modules that read process.env at import time (e.g. email.service.js).
+import "dotenv/config";
 import app from "./src/app.js";
-import dotenv from "dotenv";
 import http from "http";
 import db_connect from "./src/config/db.js";
 import { initializeSocket } from "./src/config/socket.js";
-
-dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
