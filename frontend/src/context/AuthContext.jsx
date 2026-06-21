@@ -152,7 +152,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const publicRoutes = ["/login", "/signup"];
+    // Public pages must render instantly without waiting on /current-user
+    // (which would otherwise block the landing page during a Render cold start).
+    const publicRoutes = ["/", "/login", "/signup", "/verify-email"];
 
     if (publicRoutes.includes(window.location.pathname)) {
       setLoading(false);
