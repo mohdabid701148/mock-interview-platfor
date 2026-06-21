@@ -22,6 +22,13 @@ const menuItems = [
   { id: "account", label: "Account", icon: UserRound },
 ];
 
+// Theme-aware helper class fragments (light + dark)
+const TILE = "bg-slate-100 dark:bg-[#1f1f1f]";
+const BORDER = "border-slate-200 dark:border-[#2a2a2a]";
+const ICON = "text-slate-500 dark:text-gray-400";
+const SOFT_BTN =
+  "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-[#1f1f1f] dark:text-white dark:hover:bg-[#262626]";
+
 const Settings = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -77,7 +84,6 @@ const Settings = () => {
 
   const handleChange = (e) => {
     const { name, value, checked, type } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -86,21 +92,14 @@ const Settings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       setLoading(true);
       setMessage("");
-
       const res = await authService.updateProfile(formData);
       setMessage(res?.message || "Profile updated successfully");
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 900);
+      setTimeout(() => window.location.reload(), 900);
     } catch (error) {
-      setMessage(
-        error?.response?.data?.message || "Failed to update profile"
-      );
+      setMessage(error?.response?.data?.message || "Failed to update profile");
     } finally {
       setLoading(false);
     }
@@ -113,27 +112,26 @@ const Settings = () => {
     "U";
 
   const memberSince = user?.createdAt
-    ? new Intl.DateTimeFormat("en-IN", {
-        dateStyle: "medium",
-      }).format(new Date(user.createdAt))
+    ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(
+        new Date(user.createdAt)
+      )
     : "--";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-3 backdrop-blur-sm">
-      <div className="app-card flex h-[calc(100vh-1.5rem)] w-full max-w-6xl overflow-hidden rounded-[28px] shadow-2xl">
-        <aside className="hidden w-72 shrink-0 border-r border-[#2a2a2a] bg-[#111111] p-4 md:flex md:flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-2 backdrop-blur-sm sm:p-3">
+      <div className="app-card flex h-[calc(100vh-1rem)] w-full max-w-6xl overflow-hidden rounded-2xl shadow-2xl sm:h-[calc(100vh-1.5rem)] sm:rounded-[28px]">
+        {/* ── Sidebar (md+) ───────────────────────────────────────────── */}
+        <aside className={`hidden w-72 shrink-0 border-r ${BORDER} bg-slate-50 p-4 dark:bg-[#111111] md:flex md:flex-col`}>
           <button
             onClick={() => navigate(-1)}
-            className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#1f1f1f] text-white transition hover:bg-[#262626]"
+            className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition ${SOFT_BTN}`}
             aria-label="Close settings"
           >
             <X size={20} />
           </button>
 
           <div className="mb-6 px-2">
-            <h1 className="app-heading text-xl font-semibold">
-              Settings
-            </h1>
+            <h1 className="app-heading text-xl font-semibold">Settings</h1>
             <p className="app-text mt-1 text-sm">
               Manage your account and preferences
             </p>
@@ -143,15 +141,14 @@ const Settings = () => {
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeSection === item.id;
-
               return (
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id)}
                   className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
                     isActive
-                      ? "bg-[#2a2a2a] text-white"
-                      : "text-gray-400 hover:bg-[#262626] hover:text-white"
+                      ? "bg-slate-200 text-slate-900 dark:bg-[#2a2a2a] dark:text-white"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-[#262626] dark:hover:text-white"
                   }`}
                 >
                   <Icon size={18} />
@@ -161,24 +158,22 @@ const Settings = () => {
             })}
           </nav>
 
-          <div className="mt-auto rounded-3xl border border-[#2a2a2a] bg-[#171717] p-4">
+          <div className={`mt-auto rounded-3xl border ${BORDER} bg-white p-4 dark:bg-[#171717]`}>
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1f1f1f] text-sm font-semibold text-white">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold ${TILE} text-slate-700 dark:text-white`}>
                 {initials}
               </div>
               <div className="min-w-0">
                 <p className="app-heading truncate text-sm font-semibold">
                   {user?.fullName || user?.username || "User"}
                 </p>
-                <p className="app-text truncate text-xs">
-                  {user?.email || ""}
-                </p>
+                <p className="app-text truncate text-xs">{user?.email || ""}</p>
               </div>
             </div>
 
             <button
               onClick={() => scrollToSection("account")}
-              className="mt-4 flex w-full items-center justify-between rounded-2xl border border-[#2a2a2a] bg-[#1f1f1f] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#262626]"
+              className={`mt-4 flex w-full items-center justify-between rounded-2xl border ${BORDER} px-4 py-3 text-sm font-medium transition ${SOFT_BTN}`}
             >
               Account details
               <ChevronRight size={16} />
@@ -186,48 +181,45 @@ const Settings = () => {
           </div>
         </aside>
 
-        <main className="app-bg flex-1 overflow-y-auto p-5 md:px-8 md:py-6">
+        {/* ── Main ────────────────────────────────────────────────────── */}
+        <main className="app-bg flex-1 overflow-y-auto p-4 sm:p-5 md:px-8 md:py-6">
           <div className="mx-auto max-w-4xl">
+            {/* Mobile header */}
             <div className="mb-5 flex items-center justify-between md:hidden">
               <button
                 onClick={() => navigate(-1)}
-                className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1f1f1f] text-white"
+                className={`flex h-11 w-11 items-center justify-center rounded-xl transition ${SOFT_BTN}`}
                 aria-label="Back"
               >
                 <X size={18} />
               </button>
-
-              <h2 className="app-heading text-lg font-semibold">
-                Settings
-              </h2>
-
+              <h2 className="app-heading text-lg font-semibold">Settings</h2>
               <div className="h-11 w-11" />
             </div>
 
-            <div className="border-b border-[#2a2a2a] pb-5">
-              <h2 className="app-heading text-3xl font-semibold">
+            <div className={`border-b ${BORDER} pb-5`}>
+              <h2 className="app-heading text-2xl font-semibold sm:text-3xl">
                 General
               </h2>
             </div>
 
             {message && (
-              <div className="mt-5 rounded-2xl border border-[#2a2a2a] bg-[#1f1f1f] px-4 py-3 text-sm text-gray-200">
+              <div className={`mt-5 rounded-2xl border ${BORDER} ${TILE} px-4 py-3 text-sm text-slate-700 dark:text-gray-200`}>
                 {message}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6 pb-10 pt-6">
-              <section className="rounded-[26px] bg-[#171717] p-6 shadow-lg">
+              {/* Intro */}
+              <section className="app-card rounded-[26px] p-5 sm:p-6">
                 <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                   <div className="max-w-2xl">
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#2a2a2a] bg-[#1f1f1f]">
-                      <Shield size={22} className="text-white" />
+                    <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border ${BORDER} ${TILE}`}>
+                      <Shield size={22} className="text-slate-700 dark:text-white" />
                     </div>
-
-                    <h3 className="app-heading text-xl font-semibold">
+                    <h3 className="app-heading text-lg font-semibold sm:text-xl">
                       Secure your account
                     </h3>
-
                     <p className="app-text mt-2 max-w-2xl text-sm leading-7">
                       Update your profile, notification preferences, and appearance.
                       Keep your workspace clean and easy to use.
@@ -237,7 +229,7 @@ const Settings = () => {
                   <button
                     type="button"
                     onClick={() => scrollToSection("security")}
-                    className="inline-flex items-center gap-2 rounded-full border border-[#2a2a2a] bg-[#1f1f1f] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#262626]"
+                    className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-full border ${BORDER} px-5 py-3 text-sm font-medium transition ${SOFT_BTN}`}
                   >
                     Review security
                     <ChevronRight size={16} />
@@ -245,41 +237,36 @@ const Settings = () => {
                 </div>
               </section>
 
+              {/* General */}
               <section
                 id="general"
-                ref={(el) => {
-                  sectionRefs.current.general = el;
-                }}
-                className="app-card rounded-[26px] p-6"
+                ref={(el) => { sectionRefs.current.general = el; }}
+                className="app-card rounded-[26px] p-5 sm:p-6"
               >
-                <div className="mb-6 flex items-start justify-between">
+                <div className="mb-6 flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="app-heading text-xl font-semibold">
+                    <h3 className="app-heading text-lg font-semibold sm:text-xl">
                       General
                     </h3>
                     <p className="app-text mt-1 text-sm">
                       Basic profile information shown across the app
                     </p>
                   </div>
-
-                  <div className="rounded-full bg-[#1f1f1f] px-3 py-1 text-xs text-gray-400">
+                  <div className={`shrink-0 rounded-full ${TILE} px-3 py-1 text-xs ${ICON}`}>
                     Profile
                   </div>
                 </div>
 
                 <div className="grid gap-5 md:grid-cols-[180px_1fr]">
                   <div className="app-panel rounded-3xl p-5">
-                    <div className="flex h-28 w-28 items-center justify-center rounded-full border border-[#2a2a2a] bg-[#1f1f1f] text-4xl font-bold text-white">
+                    <div className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full border text-4xl font-bold sm:mx-0 sm:h-28 sm:w-28 ${BORDER} ${TILE} text-slate-700 dark:text-white`}>
                       {initials}
                     </div>
-
-                    <div className="mt-4">
+                    <div className="mt-4 text-center sm:text-left">
                       <p className="app-heading text-sm font-medium">
                         {user?.fullName || user?.username || "Your name"}
                       </p>
-                      <p className="app-text mt-1 text-xs">
-                        Avatar preview
-                      </p>
+                      <p className="app-text mt-1 text-xs">Avatar preview</p>
                     </div>
                   </div>
 
@@ -312,7 +299,7 @@ const Settings = () => {
                       />
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <label className="app-heading mb-2 block text-sm font-medium">
                           Status
@@ -328,8 +315,8 @@ const Settings = () => {
                       </div>
 
                       <div className="app-panel flex items-center gap-3 rounded-2xl px-4 py-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1f1f1f]">
-                          <UserRound size={18} className="text-gray-400" />
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TILE}`}>
+                          <UserRound size={18} className={ICON} />
                         </div>
                         <div className="min-w-0">
                           <p className="app-heading text-sm font-medium">
@@ -342,7 +329,7 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <label className="app-heading mb-2 block text-sm font-medium">
                           Avatar URL
@@ -375,15 +362,14 @@ const Settings = () => {
                 </div>
               </section>
 
+              {/* Notifications */}
               <section
                 id="notifications"
-                ref={(el) => {
-                  sectionRefs.current.notifications = el;
-                }}
-                className="app-card rounded-[26px] p-6"
+                ref={(el) => { sectionRefs.current.notifications = el; }}
+                className="app-card rounded-[26px] p-5 sm:p-6"
               >
                 <div className="mb-5">
-                  <h3 className="app-heading text-xl font-semibold">
+                  <h3 className="app-heading text-lg font-semibold sm:text-xl">
                     Notifications
                   </h3>
                   <p className="app-text mt-1 text-sm">
@@ -392,10 +378,10 @@ const Settings = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="app-panel flex items-center justify-between rounded-2xl p-5">
+                  <div className="app-panel flex items-center justify-between gap-3 rounded-2xl p-4 sm:p-5">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-[#1f1f1f]">
-                        <Bell size={18} className="text-gray-400" />
+                      <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TILE}`}>
+                        <Bell size={18} className={ICON} />
                       </div>
                       <div>
                         <h4 className="app-heading font-medium">
@@ -407,7 +393,7 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    <label className="relative inline-flex cursor-pointer items-center">
+                    <label className="relative inline-flex shrink-0 cursor-pointer items-center">
                       <input
                         type="checkbox"
                         name="notificationsEnabled"
@@ -415,25 +401,24 @@ const Settings = () => {
                         onChange={handleChange}
                         className="peer sr-only"
                       />
-                      <div className="relative h-7 w-12 rounded-full bg-black/20 transition peer-checked:bg-white/80 dark:bg-white/15 dark:peer-checked:bg-white/80 after:absolute after:left-[2px] after:top-[2px] after:h-6 after:w-6 after:rounded-full after:border after:border-white/10 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-5" />
+                      <div className="relative h-7 w-12 rounded-full bg-slate-300 transition peer-checked:bg-blue-600 dark:bg-white/15 dark:peer-checked:bg-blue-500 after:absolute after:left-[2px] after:top-[2px] after:h-6 after:w-6 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-5" />
                     </label>
                   </div>
 
-                  <div className="app-panel rounded-2xl p-5 text-sm text-gray-400">
+                  <div className="app-panel rounded-2xl p-4 text-sm app-text sm:p-5">
                     Notification setting is synced with your profile update API.
                   </div>
                 </div>
               </section>
 
+              {/* Personalization */}
               <section
                 id="personalization"
-                ref={(el) => {
-                  sectionRefs.current.personalization = el;
-                }}
-                className="app-card rounded-[26px] p-6"
+                ref={(el) => { sectionRefs.current.personalization = el; }}
+                className="app-card rounded-[26px] p-5 sm:p-6"
               >
                 <div className="mb-5">
-                  <h3 className="app-heading text-xl font-semibold">
+                  <h3 className="app-heading text-lg font-semibold sm:text-xl">
                     Personalization
                   </h3>
                   <p className="app-text mt-1 text-sm">
@@ -442,17 +427,15 @@ const Settings = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="app-panel flex items-center justify-between rounded-2xl p-5">
+                  <div className="app-panel flex items-center justify-between gap-3 rounded-2xl p-4 sm:p-5">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-[#1f1f1f]">
-                        <Moon size={18} className="text-gray-400" />
+                      <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TILE}`}>
+                        <Moon size={18} className={ICON} />
                       </div>
                       <div>
-                        <h4 className="app-heading font-medium">
-                          Appearance
-                        </h4>
+                        <h4 className="app-heading font-medium">Appearance</h4>
                         <p className="app-text mt-1 text-sm">
-                          Use a soft dark theme with neutral gray panels.
+                          Switch between light and dark theme.
                         </p>
                       </div>
                     </div>
@@ -460,19 +443,20 @@ const Settings = () => {
                     <button
                       type="button"
                       onClick={() => setDarkMode((prev) => !prev)}
-                      className={`relative h-8 w-16 rounded-full transition-all duration-300 ${
-                        darkMode ? "bg-white/80" : "bg-black/20"
+                      aria-label="Toggle theme"
+                      className={`relative h-8 w-16 shrink-0 rounded-full transition-all duration-300 ${
+                        darkMode ? "bg-blue-600" : "bg-slate-300"
                       }`}
                     >
                       <span
-                        className={`absolute top-1 h-6 w-6 rounded-full bg-[#1f1f1f] shadow-md transition-all duration-300 ${
+                        className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-md transition-all duration-300 ${
                           darkMode ? "left-9" : "left-1"
                         }`}
                       />
                     </button>
                   </div>
 
-                  <div className="app-panel rounded-2xl p-5">
+                  <div className="app-panel rounded-2xl p-4 sm:p-5">
                     <h4 className="app-heading font-medium">Current theme</h4>
                     <p className="app-text mt-1 text-sm">
                       {darkMode ? "Dark" : "Light"}
@@ -481,15 +465,14 @@ const Settings = () => {
                 </div>
               </section>
 
+              {/* Security */}
               <section
                 id="security"
-                ref={(el) => {
-                  sectionRefs.current.security = el;
-                }}
-                className="app-card rounded-[26px] p-6"
+                ref={(el) => { sectionRefs.current.security = el; }}
+                className="app-card rounded-[26px] p-5 sm:p-6"
               >
                 <div className="mb-5">
-                  <h3 className="app-heading text-xl font-semibold">
+                  <h3 className="app-heading text-lg font-semibold sm:text-xl">
                     Security
                   </h3>
                   <p className="app-text mt-1 text-sm">
@@ -497,18 +480,16 @@ const Settings = () => {
                   </p>
                 </div>
 
-                <div className="rounded-[24px] bg-black p-6">
+                <div className="app-panel rounded-[24px] p-5 sm:p-6">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="max-w-2xl">
-                      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#2a2a2a] bg-[#1f1f1f]">
-                        <Lock size={20} className="text-white" />
+                      <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border ${BORDER} ${TILE}`}>
+                        <Lock size={20} className="text-slate-700 dark:text-white" />
                       </div>
-
-                      <h4 className="text-lg font-semibold text-white">
+                      <h4 className="app-heading text-lg font-semibold">
                         Protect your account
                       </h4>
-
-                      <p className="mt-2 text-sm leading-7 text-gray-400">
+                      <p className="app-text mt-2 text-sm leading-7">
                         Use a strong password and keep notifications enabled so you
                         never miss an important interview update.
                       </p>
@@ -517,7 +498,7 @@ const Settings = () => {
                     <button
                       type="button"
                       onClick={() => navigate("/settings")}
-                      className="rounded-full border border-[#2a2a2a] bg-[#1f1f1f] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#262626]"
+                      className={`shrink-0 rounded-full border ${BORDER} px-5 py-3 text-sm font-medium transition ${SOFT_BTN}`}
                     >
                       Change password
                     </button>
@@ -525,34 +506,29 @@ const Settings = () => {
                 </div>
               </section>
 
+              {/* Account */}
               <section
                 id="account"
-                ref={(el) => {
-                  sectionRefs.current.account = el;
-                }}
-                className="app-card rounded-[26px] p-6"
+                ref={(el) => { sectionRefs.current.account = el; }}
+                className="app-card rounded-[26px] p-5 sm:p-6"
               >
                 <div className="mb-5">
-                  <h3 className="app-heading text-xl font-semibold">
+                  <h3 className="app-heading text-lg font-semibold sm:text-xl">
                     Account
                   </h3>
-                  <p className="app-text mt-1 text-sm">
-                    Your account summary
-                  </p>
+                  <p className="app-text mt-1 text-sm">Your account summary</p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="app-panel rounded-2xl p-5">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">
-                      Email
-                    </p>
-                    <p className="app-heading mt-2 text-sm font-medium">
+                    <p className="text-xs uppercase tracking-wide app-muted">Email</p>
+                    <p className="app-heading mt-2 break-words text-sm font-medium">
                       {user?.email || "--"}
                     </p>
                   </div>
 
                   <div className="app-panel rounded-2xl p-5">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">
+                    <p className="text-xs uppercase tracking-wide app-muted">
                       Member since
                     </p>
                     <p className="app-heading mt-2 text-sm font-medium">
@@ -561,7 +537,7 @@ const Settings = () => {
                   </div>
 
                   <div className="app-panel rounded-2xl p-5">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">
+                    <p className="text-xs uppercase tracking-wide app-muted">
                       Username
                     </p>
                     <p className="app-heading mt-2 text-sm font-medium">
@@ -569,18 +545,19 @@ const Settings = () => {
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
-                    <p className="text-xs uppercase tracking-wide text-red-300">
+                  <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
+                    <p className="text-xs uppercase tracking-wide text-red-500 dark:text-red-300">
                       Danger zone
                     </p>
-                    <p className="mt-2 text-sm text-gray-400">
+                    <p className="app-text mt-2 text-sm">
                       Account deletion is not enabled here.
                     </p>
                   </div>
                 </div>
               </section>
 
-              <div className="flex flex-col gap-3 border-t border-[#2a2a2a] pt-4 md:flex-row md:items-center md:justify-between">
+              {/* Footer actions */}
+              <div className={`flex flex-col gap-3 border-t ${BORDER} pt-4 md:flex-row md:items-center md:justify-between`}>
                 <p className="app-text text-sm">
                   Changes are saved to your profile update API.
                 </p>
@@ -589,7 +566,7 @@ const Settings = () => {
                   <button
                     type="button"
                     onClick={() => navigate(-1)}
-                    className="rounded-full border border-[#2a2a2a] bg-[#1f1f1f] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#262626]"
+                    className={`flex-1 rounded-full border ${BORDER} px-5 py-3 text-sm font-medium transition md:flex-none ${SOFT_BTN}`}
                   >
                     Cancel
                   </button>
@@ -597,7 +574,7 @@ const Settings = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="app-btn-primary flex-1 rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 md:flex-none"
                   >
                     {loading ? "Saving..." : "Save Changes"}
                   </button>
