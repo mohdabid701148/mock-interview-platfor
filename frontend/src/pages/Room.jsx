@@ -638,8 +638,8 @@ const Room = () => {
                 {room?.meetingLink && (
                   <a
                     href={normalizeUrl(room.meetingLink)}
-                    target="_blank"
-                    rel="noreferrer"
+                    target="mockmate-call"
+                    rel="noopener"
                     className="flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
                   >
                     <Video size={17} />
@@ -1175,8 +1175,8 @@ const Room = () => {
                   {room?.meetingLink ? (
                     <a
                       href={normalizeUrl(room.meetingLink)}
-                      target="_blank"
-                      rel="noreferrer"
+                      target="mockmate-call"
+                      rel="noopener"
                       className="mt-2 inline-flex text-sm font-medium text-blue-600 hover:underline dark:text-blue-300"
                     >
                       Open meeting link
