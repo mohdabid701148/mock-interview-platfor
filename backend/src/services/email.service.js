@@ -1,106 +1,93 @@
-import nodemailer from "nodemailer";
 import { ApiError } from "../utils/ApiError.js";
 import { verificationEmailTemplate } from "../utils/emailTemplates.js";
 
-// Default sender. Brevo requires this to be a verified sender/domain in your
-// Brevo account. Set EMAIL_FROM accordingly, e.g. "MockMate <no-reply@yourdomain.com>".
-const FROM = process.env.EMAIL_FROM || "MockMate <no-reply@mockmate.app>";
+// Brevo transactional email over HTTPS (port 443). Used instead of SMTP because
+// PaaS hosts like Render block outbound SMTP ports (587/465).
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
-// ── Reusable pooled transporter (one instance for the whole process) ─────────
-let transporter = null;
+const isConfigured = () => Boolean(process.env.BREVO_API_KEY);
 
-const isConfigured = () =>
-  Boolean(
-    process.env.BREVO_SMTP_HOST &&
-      process.env.BREVO_SMTP_USER &&
-      process.env.BREVO_SMTP_PASS
-  );
-
-const createTransporter = () => {
-  if (!isConfigured()) {
-    throw new ApiError(
-      500,
-      "Email service is not configured (BREVO_SMTP_* env vars missing)"
-    );
-  }
-
-  const port = Number(process.env.BREVO_SMTP_PORT) || 587;
-
-  return nodemailer.createTransport({
-    host: process.env.BREVO_SMTP_HOST, // smtp-relay.brevo.com
-    port,
-    secure: port === 465, // 465 = implicit TLS, 587 = STARTTLS
-    auth: {
-      user: process.env.BREVO_SMTP_USER,
-      pass: process.env.BREVO_SMTP_PASS,
-    },
-    // Connection pooling — reuse sockets instead of dialing per email.
-    pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
-  });
+// Parse EMAIL_FROM ("MockMate <no-reply@x.com>" or "no-reply@x.com") into Brevo's
+// sender shape. The sender email must be a VERIFIED sender in your Brevo account.
+const parseSender = (raw) => {
+  if (!raw) return { name: "MockMate", email: "no-reply@mockmate.app" };
+  const m = raw.match(/^\s*(.*?)\s*<\s*([^>]+?)\s*>\s*$/);
+  if (m) return { name: m[1] || "MockMate", email: m[2] };
+  return { name: "MockMate", email: raw.trim() };
 };
 
-// Lazily build and reuse the same transporter instance.
-const getTransporter = () => {
-  if (!transporter) {
-    transporter = createTransporter();
-  }
-  return transporter;
-};
+const SENDER = parseSender(process.env.EMAIL_FROM);
 
-// Verify the SMTP connection once at startup. Never throws — a bad/missing
-// config only logs, so the Express server still boots and users can resend later.
-const verifyTransporter = async () => {
-  try {
-    await getTransporter().verify();
-    console.log("[email] Brevo SMTP transporter ready");
-  } catch (err) {
-    console.error("[email] SMTP verification failed:", err.message);
-  }
-};
-
-// Run verification on module load (i.e. at server startup) only if configured.
 if (isConfigured()) {
-  verifyTransporter();
+  console.log(`[email] Brevo HTTP API ready (sender: ${SENDER.email})`);
 } else {
   console.warn(
-    "[email] BREVO_SMTP_* not set — email sending is disabled until configured"
+    "[email] BREVO_API_KEY not set — email sending is disabled until configured"
   );
 }
 
-// ── Transient-failure retry ──────────────────────────────────────────────────
-// 4xx SMTP responses and connection errors are temporary; 5xx are permanent.
-const isTransient = (err) => {
-  const code = err?.responseCode;
-  if (typeof code === "number" && code >= 400 && code < 500) return true;
-  const transientCodes = [
-    "ECONNECTION",
-    "ETIMEDOUT",
-    "ESOCKET",
-    "ECONNRESET",
-    "EAI_AGAIN",
-    "EDNS",
-  ];
-  return transientCodes.includes(err?.code);
-};
+// ── HTTP send with timeout + transient-failure retry ─────────────────────────
+const postToBrevo = async ({ to, subject, html, text }) => {
+  if (!isConfigured()) {
+    throw new ApiError(500, "Email service is not configured (BREVO_API_KEY missing)");
+  }
 
-const sendWithRetry = async (mailOptions, retries = 2) => {
-  let attempt = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  const payload = {
+    sender: SENDER,
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+    textContent: text,
+  };
+
+  const maxRetries = 2;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
     try {
-      return await getTransporter().sendMail(mailOptions);
-    } catch (err) {
-      attempt += 1;
-      if (attempt > retries || !isTransient(err)) {
-        throw err;
+      const res = await fetch(BREVO_API_URL, {
+        method: "POST",
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (res.ok) {
+        return await res.json().catch(() => ({}));
       }
-      const delay = 500 * attempt; // simple linear backoff
-      console.warn(
-        `[email] transient SMTP failure (attempt ${attempt}/${retries}), retrying in ${delay}ms: ${err.message}`
-      );
-      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      const bodyText = await res.text().catch(() => "");
+
+      // 429 (rate limit) and 5xx are temporary — retry; 4xx is permanent.
+      const transient = res.status === 429 || res.status >= 500;
+      if (transient && attempt < maxRetries) {
+        const delay = 500 * (attempt + 1);
+        console.warn(`[email] Brevo API ${res.status}, retrying in ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      throw new Error(`Brevo API responded ${res.status}: ${bodyText}`);
+    } catch (err) {
+      clearTimeout(timer);
+
+      // Aborted (timeout) or network-level errors are temporary.
+      const networkLevel = err.name === "AbortError" || err.name === "TypeError";
+      if (networkLevel && attempt < maxRetries) {
+        const delay = 500 * (attempt + 1);
+        console.warn(`[email] network error (${err.message}), retrying in ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      throw err;
     }
   }
 };
@@ -108,7 +95,7 @@ const sendWithRetry = async (mailOptions, retries = 2) => {
 // ── Public API (signatures unchanged — controllers need no edits) ────────────
 
 /**
- * Generic, reusable email sender — the single integration point with SMTP.
+ * Generic, reusable email sender — the single integration point with Brevo.
  * Reused by future features (password reset, reminders, feedback summaries).
  */
 export const sendEmail = async ({ to, subject, html, text }) => {
@@ -117,9 +104,9 @@ export const sendEmail = async ({ to, subject, html, text }) => {
   }
 
   try {
-    const info = await sendWithRetry({ from: FROM, to, subject, html, text });
-    console.log(`[email] sent "${subject}" to ${to} (messageId: ${info.messageId})`);
-    return info;
+    const data = await postToBrevo({ to, subject, html, text });
+    console.log(`[email] sent "${subject}" to ${to} (messageId: ${data?.messageId || "n/a"})`);
+    return data;
   } catch (err) {
     console.error(`[email] failed to send "${subject}" to ${to}:`, err.message);
     // Preserve existing behavior: caller (controller) decides what to do.
