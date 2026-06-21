@@ -199,44 +199,20 @@ const Settings = () => {
 
             <div className={`border-b ${BORDER} pb-5`}>
               <h2 className="app-heading text-2xl font-semibold sm:text-3xl">
-                General
+                Settings
               </h2>
+              <p className="app-text mt-1 text-sm">
+                Manage your profile, notifications, and appearance.
+              </p>
             </div>
 
             {message && (
-              <div className={`mt-5 rounded-2xl border ${BORDER} ${TILE} px-4 py-3 text-sm text-slate-700 dark:text-gray-200`}>
+              <div className="mt-5 flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                 {message}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6 pb-10 pt-6">
-              {/* Intro */}
-              <section className="app-card rounded-[26px] p-5 sm:p-6">
-                <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                  <div className="max-w-2xl">
-                    <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border ${BORDER} ${TILE}`}>
-                      <Shield size={22} className="text-slate-700 dark:text-white" />
-                    </div>
-                    <h3 className="app-heading text-lg font-semibold sm:text-xl">
-                      Secure your account
-                    </h3>
-                    <p className="app-text mt-2 max-w-2xl text-sm leading-7">
-                      Update your profile, notification preferences, and appearance.
-                      Keep your workspace clean and easy to use.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection("security")}
-                    className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-full border ${BORDER} px-5 py-3 text-sm font-medium transition ${SOFT_BTN}`}
-                  >
-                    Review security
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </section>
-
               {/* General */}
               <section
                 id="general"
@@ -476,32 +452,42 @@ const Settings = () => {
                     Security
                   </h3>
                   <p className="app-text mt-1 text-sm">
-                    Keep your account protected
+                    Your account protection status
                   </p>
                 </div>
 
-                <div className="app-panel rounded-[24px] p-5 sm:p-6">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="max-w-2xl">
-                      <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border ${BORDER} ${TILE}`}>
-                        <Lock size={20} className="text-slate-700 dark:text-white" />
+                <div className="space-y-4">
+                  <div className="app-panel flex items-center justify-between gap-3 rounded-2xl p-4 sm:p-5">
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TILE}`}>
+                        <Lock size={18} className={ICON} />
                       </div>
-                      <h4 className="app-heading text-lg font-semibold">
-                        Protect your account
-                      </h4>
-                      <p className="app-text mt-2 text-sm leading-7">
-                        Use a strong password and keep notifications enabled so you
-                        never miss an important interview update.
-                      </p>
+                      <div>
+                        <h4 className="app-heading font-medium">
+                          Email verification
+                        </h4>
+                        <p className="app-text mt-1 text-sm">
+                          {user?.isVerified
+                            ? "Your email address is verified."
+                            : "Your email address is not verified yet."}
+                        </p>
+                      </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => navigate("/settings")}
-                      className={`shrink-0 rounded-full border ${BORDER} px-5 py-3 text-sm font-medium transition ${SOFT_BTN}`}
+                    <span
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                        user?.isVerified
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                      }`}
                     >
-                      Change password
-                    </button>
+                      {user?.isVerified ? "Verified" : "Pending"}
+                    </span>
+                  </div>
+
+                  <div className="app-panel rounded-2xl p-4 text-sm app-text sm:p-5">
+                    Your account is protected with email + password login. Keep your
+                    password private and never share it with anyone.
                   </div>
                 </div>
               </section>
