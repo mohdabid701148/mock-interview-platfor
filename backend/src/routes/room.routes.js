@@ -8,7 +8,7 @@ import {
   getUserRooms,
   startRoom,
   completeRoom,
-} from "../controllers/Room.controller.js"
+} from "../controllers/room.controller.js"
 
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import {
