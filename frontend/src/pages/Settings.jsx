@@ -1,43 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Bell,
-  ChevronRight,
-  Lock,
-  Moon,
-  Settings2,
-  Shield,
-  Sparkles,
-  UserRound,
-  X,
-} from "lucide-react";
+import { Bell, Lock, Moon, UserRound, X } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { authService } from "../services/auth.service";
 
-const menuItems = [
-  { id: "general", label: "General", icon: Settings2 },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "personalization", label: "Personalization", icon: Sparkles },
-  { id: "security", label: "Security", icon: Shield },
-  { id: "account", label: "Account", icon: UserRound },
-];
-
-// Theme-aware helper class fragments (light + dark)
+// Theme-aware fragments (light + dark)
 const TILE = "bg-slate-100 dark:bg-[#1f1f1f]";
 const BORDER = "border-slate-200 dark:border-[#2a2a2a]";
 const ICON = "text-slate-500 dark:text-gray-400";
 const SOFT_BTN =
-  "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-[#1f1f1f] dark:text-white dark:hover:bg-[#262626]";
+  "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-[#2a2a2a] dark:bg-[#1f1f1f] dark:text-white dark:hover:bg-[#262626]";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const sectionRefs = useRef({});
-  const [activeSection, setActiveSection] = useState("general");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-
   const [darkMode, setDarkMode] = useState(
     localStorage.getItem("theme") === "dark"
   );
@@ -74,14 +53,6 @@ const Settings = () => {
     }
   }, [darkMode]);
 
-  const scrollToSection = (id) => {
-    setActiveSection(id);
-    sectionRefs.current[id]?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
   const handleChange = (e) => {
     const { name, value, checked, type } = e.target;
     setFormData((prev) => ({
@@ -117,458 +88,267 @@ const Settings = () => {
       )
     : "--";
 
+  const SectionLabel = ({ children }) => (
+    <p className="app-muted mb-3 text-xs font-semibold uppercase tracking-wider">
+      {children}
+    </p>
+  );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-2 backdrop-blur-sm sm:p-3">
-      <div className="app-card flex h-[calc(100vh-1rem)] w-full max-w-6xl overflow-hidden rounded-2xl shadow-2xl sm:h-[calc(100vh-1.5rem)] sm:rounded-[28px]">
-        {/* ── Sidebar (md+) ───────────────────────────────────────────── */}
-        <aside className={`hidden w-72 shrink-0 border-r ${BORDER} bg-slate-50 p-4 dark:bg-[#111111] md:flex md:flex-col`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+      <div className="app-card flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl shadow-2xl">
+        {/* ── Header (sticky) ─────────────────────────────────────────── */}
+        <div className={`flex shrink-0 items-center justify-between border-b ${BORDER} px-5 py-4`}>
+          <div>
+            <h2 className="app-heading text-lg font-semibold">Settings</h2>
+            <p className="app-text text-xs">Manage your account and preferences</p>
+          </div>
           <button
             onClick={() => navigate(-1)}
-            className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl transition ${SOFT_BTN}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${SOFT_BTN}`}
             aria-label="Close settings"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
+        </div>
 
-          <div className="mb-6 px-2">
-            <h1 className="app-heading text-xl font-semibold">Settings</h1>
-            <p className="app-text mt-1 text-sm">
-              Manage your account and preferences
-            </p>
-          </div>
+        {/* ── Body (scrollable) ───────────────────────────────────────── */}
+        <form
+          id="settings-form"
+          onSubmit={handleSubmit}
+          className="app-bg flex-1 space-y-7 overflow-y-auto px-5 py-5"
+        >
+          {message && (
+            <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              {message}
+            </div>
+          )}
 
-          <nav className="flex flex-col gap-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeSection === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
-                    isActive
-                      ? "bg-slate-200 text-slate-900 dark:bg-[#2a2a2a] dark:text-white"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-[#262626] dark:hover:text-white"
-                  }`}
-                >
-                  <Icon size={18} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+          {/* Profile */}
+          <section>
+            <SectionLabel>Profile</SectionLabel>
 
-          <div className={`mt-auto rounded-3xl border ${BORDER} bg-white p-4 dark:bg-[#171717]`}>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold ${TILE} text-slate-700 dark:text-white`}>
+            <div className="mb-4 flex items-center gap-4">
+              <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-2xl font-bold ${TILE} text-slate-700 dark:text-white`}>
                 {initials}
               </div>
               <div className="min-w-0">
                 <p className="app-heading truncate text-sm font-semibold">
-                  {user?.fullName || user?.username || "User"}
+                  {user?.fullName || user?.username || "Your name"}
                 </p>
                 <p className="app-text truncate text-xs">{user?.email || ""}</p>
               </div>
             </div>
 
-            <button
-              onClick={() => scrollToSection("account")}
-              className={`mt-4 flex w-full items-center justify-between rounded-2xl border ${BORDER} px-4 py-3 text-sm font-medium transition ${SOFT_BTN}`}
-            >
-              Account details
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </aside>
-
-        {/* ── Main ────────────────────────────────────────────────────── */}
-        <main className="app-bg flex-1 overflow-y-auto p-4 sm:p-5 md:px-8 md:py-6">
-          <div className="mx-auto max-w-4xl">
-            {/* Mobile header */}
-            <div className="mb-5 flex items-center justify-between md:hidden">
-              <button
-                onClick={() => navigate(-1)}
-                className={`flex h-11 w-11 items-center justify-center rounded-xl transition ${SOFT_BTN}`}
-                aria-label="Back"
-              >
-                <X size={18} />
-              </button>
-              <h2 className="app-heading text-lg font-semibold">Settings</h2>
-              <div className="h-11 w-11" />
-            </div>
-
-            <div className={`border-b ${BORDER} pb-5`}>
-              <h2 className="app-heading text-2xl font-semibold sm:text-3xl">
-                Settings
-              </h2>
-              <p className="app-text mt-1 text-sm">
-                Manage your profile, notifications, and appearance.
-              </p>
-            </div>
-
-            {message && (
-              <div className="mt-5 flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                {message}
+            <div className="space-y-4">
+              <div>
+                <label className="app-heading mb-1.5 block text-sm font-medium">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className="app-input w-full rounded-xl px-4 py-2.5 outline-none"
+                  placeholder="Enter your full name"
+                />
               </div>
-            )}
 
-            <form onSubmit={handleSubmit} className="space-y-6 pb-10 pt-6">
-              {/* General */}
-              <section
-                id="general"
-                ref={(el) => { sectionRefs.current.general = el; }}
-                className="app-card rounded-[26px] p-5 sm:p-6"
-              >
-                <div className="mb-6 flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="app-heading text-lg font-semibold sm:text-xl">
-                      General
-                    </h3>
-                    <p className="app-text mt-1 text-sm">
-                      Basic profile information shown across the app
-                    </p>
-                  </div>
-                  <div className={`shrink-0 rounded-full ${TILE} px-3 py-1 text-xs ${ICON}`}>
-                    Profile
-                  </div>
+              <div>
+                <label className="app-heading mb-1.5 block text-sm font-medium">
+                  Bio
+                </label>
+                <textarea
+                  rows="3"
+                  name="bio"
+                  value={formData.bio}
+                  onChange={handleChange}
+                  className="app-input w-full rounded-xl px-4 py-2.5 outline-none"
+                  placeholder="Write a short bio"
+                />
+              </div>
+
+              <div>
+                <label className="app-heading mb-1.5 block text-sm font-medium">
+                  Status
+                </label>
+                <input
+                  type="text"
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="app-input w-full rounded-xl px-4 py-2.5 outline-none"
+                  placeholder="e.g. Available for interviews"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="app-heading mb-1.5 block text-sm font-medium">
+                    Avatar URL
+                  </label>
+                  <input
+                    type="text"
+                    name="avatar"
+                    value={formData.avatar}
+                    onChange={handleChange}
+                    className="app-input w-full rounded-xl px-4 py-2.5 outline-none"
+                    placeholder="https://..."
+                  />
                 </div>
-
-                <div className="grid gap-5 md:grid-cols-[180px_1fr]">
-                  <div className="app-panel rounded-3xl p-5">
-                    <div className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full border text-4xl font-bold sm:mx-0 sm:h-28 sm:w-28 ${BORDER} ${TILE} text-slate-700 dark:text-white`}>
-                      {initials}
-                    </div>
-                    <div className="mt-4 text-center sm:text-left">
-                      <p className="app-heading text-sm font-medium">
-                        {user?.fullName || user?.username || "Your name"}
-                      </p>
-                      <p className="app-text mt-1 text-xs">Avatar preview</p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4">
-                    <div>
-                      <label className="app-heading mb-2 block text-sm font-medium">
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        className="app-input w-full rounded-2xl px-4 py-3 outline-none"
-                        placeholder="Enter your full name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="app-heading mb-2 block text-sm font-medium">
-                        Bio
-                      </label>
-                      <textarea
-                        rows="4"
-                        name="bio"
-                        value={formData.bio}
-                        onChange={handleChange}
-                        className="app-input w-full rounded-2xl px-4 py-3 outline-none"
-                        placeholder="Write a short bio"
-                      />
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="app-heading mb-2 block text-sm font-medium">
-                          Status
-                        </label>
-                        <input
-                          type="text"
-                          name="status"
-                          value={formData.status}
-                          onChange={handleChange}
-                          className="app-input w-full rounded-2xl px-4 py-3 outline-none"
-                          placeholder="e.g. Available for interviews"
-                        />
-                      </div>
-
-                      <div className="app-panel flex items-center gap-3 rounded-2xl px-4 py-3">
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TILE}`}>
-                          <UserRound size={18} className={ICON} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="app-heading text-sm font-medium">
-                            {user?.username || "username"}
-                          </p>
-                          <p className="app-text truncate text-xs">
-                            {user?.email || "email"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="app-heading mb-2 block text-sm font-medium">
-                          Avatar URL
-                        </label>
-                        <input
-                          type="text"
-                          name="avatar"
-                          value={formData.avatar}
-                          onChange={handleChange}
-                          className="app-input w-full rounded-2xl px-4 py-3 outline-none"
-                          placeholder="https://..."
-                        />
-                      </div>
-
-                      <div>
-                        <label className="app-heading mb-2 block text-sm font-medium">
-                          Cover Image URL
-                        </label>
-                        <input
-                          type="text"
-                          name="coverImage"
-                          value={formData.coverImage}
-                          onChange={handleChange}
-                          className="app-input w-full rounded-2xl px-4 py-3 outline-none"
-                          placeholder="https://..."
-                        />
-                      </div>
-                    </div>
-                  </div>
+                <div>
+                  <label className="app-heading mb-1.5 block text-sm font-medium">
+                    Cover Image URL
+                  </label>
+                  <input
+                    type="text"
+                    name="coverImage"
+                    value={formData.coverImage}
+                    onChange={handleChange}
+                    className="app-input w-full rounded-xl px-4 py-2.5 outline-none"
+                    placeholder="https://..."
+                  />
                 </div>
-              </section>
+              </div>
+            </div>
+          </section>
 
+          {/* Preferences */}
+          <section>
+            <SectionLabel>Preferences</SectionLabel>
+
+            <div className="space-y-3">
               {/* Notifications */}
-              <section
-                id="notifications"
-                ref={(el) => { sectionRefs.current.notifications = el; }}
-                className="app-card rounded-[26px] p-5 sm:p-6"
-              >
-                <div className="mb-5">
-                  <h3 className="app-heading text-lg font-semibold sm:text-xl">
-                    Notifications
-                  </h3>
-                  <p className="app-text mt-1 text-sm">
-                    Choose what updates you want to receive
+              <div className={`flex items-center justify-between gap-3 rounded-2xl border ${BORDER} ${TILE} p-4`}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a]">
+                    <Bell size={16} className={ICON} />
+                  </div>
+                  <div>
+                    <h4 className="app-heading text-sm font-medium">
+                      Interview reminders
+                    </h4>
+                    <p className="app-text text-xs">
+                      Notify me about upcoming interviews.
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    name="notificationsEnabled"
+                    checked={formData.notificationsEnabled}
+                    onChange={handleChange}
+                    className="peer sr-only"
+                  />
+                  <div className="relative h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-blue-600 dark:bg-white/15 dark:peer-checked:bg-blue-500 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-5" />
+                </label>
+              </div>
+
+              {/* Appearance */}
+              <div className={`flex items-center justify-between gap-3 rounded-2xl border ${BORDER} ${TILE} p-4`}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a]">
+                    <Moon size={16} className={ICON} />
+                  </div>
+                  <div>
+                    <h4 className="app-heading text-sm font-medium">Appearance</h4>
+                    <p className="app-text text-xs">
+                      {darkMode ? "Dark theme" : "Light theme"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDarkMode((prev) => !prev)}
+                  aria-label="Toggle theme"
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-all duration-300 ${
+                    darkMode ? "bg-blue-600" : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-[2px] h-5 w-5 rounded-full bg-white shadow transition-all duration-300 ${
+                      darkMode ? "left-[22px]" : "left-[2px]"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Account */}
+          <section>
+            <SectionLabel>Account</SectionLabel>
+
+            <div className="space-y-3">
+              <div className={`flex items-center justify-between gap-3 rounded-2xl border ${BORDER} ${TILE} p-4`}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-[#2a2a2a]">
+                    <Lock size={16} className={ICON} />
+                  </div>
+                  <div>
+                    <h4 className="app-heading text-sm font-medium">
+                      Email verification
+                    </h4>
+                    <p className="app-text text-xs">
+                      {user?.isVerified ? "Your email is verified." : "Not verified yet."}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                    user?.isVerified
+                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  }`}
+                >
+                  {user?.isVerified ? "Verified" : "Pending"}
+                </span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className={`rounded-2xl border ${BORDER} ${TILE} p-4`}>
+                  <p className="app-muted text-xs uppercase tracking-wide">Username</p>
+                  <p className="app-heading mt-1 truncate text-sm font-medium">
+                    {user?.username || "--"}
                   </p>
                 </div>
-
-                <div className="space-y-4">
-                  <div className="app-panel flex items-center justify-between gap-3 rounded-2xl p-4 sm:p-5">
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TILE}`}>
-                        <Bell size={18} className={ICON} />
-                      </div>
-                      <div>
-                        <h4 className="app-heading font-medium">
-                          Interview reminders
-                        </h4>
-                        <p className="app-text mt-1 text-sm">
-                          Get notified about upcoming mock interviews and schedule changes.
-                        </p>
-                      </div>
-                    </div>
-
-                    <label className="relative inline-flex shrink-0 cursor-pointer items-center">
-                      <input
-                        type="checkbox"
-                        name="notificationsEnabled"
-                        checked={formData.notificationsEnabled}
-                        onChange={handleChange}
-                        className="peer sr-only"
-                      />
-                      <div className="relative h-7 w-12 rounded-full bg-slate-300 transition peer-checked:bg-blue-600 dark:bg-white/15 dark:peer-checked:bg-blue-500 after:absolute after:left-[2px] after:top-[2px] after:h-6 after:w-6 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-5" />
-                    </label>
-                  </div>
-
-                  <div className="app-panel rounded-2xl p-4 text-sm app-text sm:p-5">
-                    Notification setting is synced with your profile update API.
-                  </div>
-                </div>
-              </section>
-
-              {/* Personalization */}
-              <section
-                id="personalization"
-                ref={(el) => { sectionRefs.current.personalization = el; }}
-                className="app-card rounded-[26px] p-5 sm:p-6"
-              >
-                <div className="mb-5">
-                  <h3 className="app-heading text-lg font-semibold sm:text-xl">
-                    Personalization
-                  </h3>
-                  <p className="app-text mt-1 text-sm">
-                    Match the app look to your preference
+                <div className={`rounded-2xl border ${BORDER} ${TILE} p-4`}>
+                  <p className="app-muted text-xs uppercase tracking-wide">
+                    Member since
                   </p>
+                  <p className="app-heading mt-1 text-sm font-medium">{memberSince}</p>
                 </div>
-
-                <div className="space-y-4">
-                  <div className="app-panel flex items-center justify-between gap-3 rounded-2xl p-4 sm:p-5">
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TILE}`}>
-                        <Moon size={18} className={ICON} />
-                      </div>
-                      <div>
-                        <h4 className="app-heading font-medium">Appearance</h4>
-                        <p className="app-text mt-1 text-sm">
-                          Switch between light and dark theme.
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setDarkMode((prev) => !prev)}
-                      aria-label="Toggle theme"
-                      className={`relative h-8 w-16 shrink-0 rounded-full transition-all duration-300 ${
-                        darkMode ? "bg-blue-600" : "bg-slate-300"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-md transition-all duration-300 ${
-                          darkMode ? "left-9" : "left-1"
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="app-panel rounded-2xl p-4 sm:p-5">
-                    <h4 className="app-heading font-medium">Current theme</h4>
-                    <p className="app-text mt-1 text-sm">
-                      {darkMode ? "Dark" : "Light"}
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Security */}
-              <section
-                id="security"
-                ref={(el) => { sectionRefs.current.security = el; }}
-                className="app-card rounded-[26px] p-5 sm:p-6"
-              >
-                <div className="mb-5">
-                  <h3 className="app-heading text-lg font-semibold sm:text-xl">
-                    Security
-                  </h3>
-                  <p className="app-text mt-1 text-sm">
-                    Your account protection status
+                <div className={`rounded-2xl border ${BORDER} ${TILE} p-4 sm:col-span-2`}>
+                  <p className="app-muted text-xs uppercase tracking-wide">Email</p>
+                  <p className="app-heading mt-1 break-words text-sm font-medium">
+                    {user?.email || "--"}
                   </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="app-panel flex items-center justify-between gap-3 rounded-2xl p-4 sm:p-5">
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TILE}`}>
-                        <Lock size={18} className={ICON} />
-                      </div>
-                      <div>
-                        <h4 className="app-heading font-medium">
-                          Email verification
-                        </h4>
-                        <p className="app-text mt-1 text-sm">
-                          {user?.isVerified
-                            ? "Your email address is verified."
-                            : "Your email address is not verified yet."}
-                        </p>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                        user?.isVerified
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                          : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                      }`}
-                    >
-                      {user?.isVerified ? "Verified" : "Pending"}
-                    </span>
-                  </div>
-
-                  <div className="app-panel rounded-2xl p-4 text-sm app-text sm:p-5">
-                    Your account is protected with email + password login. Keep your
-                    password private and never share it with anyone.
-                  </div>
-                </div>
-              </section>
-
-              {/* Account */}
-              <section
-                id="account"
-                ref={(el) => { sectionRefs.current.account = el; }}
-                className="app-card rounded-[26px] p-5 sm:p-6"
-              >
-                <div className="mb-5">
-                  <h3 className="app-heading text-lg font-semibold sm:text-xl">
-                    Account
-                  </h3>
-                  <p className="app-text mt-1 text-sm">Your account summary</p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="app-panel rounded-2xl p-5">
-                    <p className="text-xs uppercase tracking-wide app-muted">Email</p>
-                    <p className="app-heading mt-2 break-words text-sm font-medium">
-                      {user?.email || "--"}
-                    </p>
-                  </div>
-
-                  <div className="app-panel rounded-2xl p-5">
-                    <p className="text-xs uppercase tracking-wide app-muted">
-                      Member since
-                    </p>
-                    <p className="app-heading mt-2 text-sm font-medium">
-                      {memberSince}
-                    </p>
-                  </div>
-
-                  <div className="app-panel rounded-2xl p-5">
-                    <p className="text-xs uppercase tracking-wide app-muted">
-                      Username
-                    </p>
-                    <p className="app-heading mt-2 text-sm font-medium">
-                      {user?.username || "--"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
-                    <p className="text-xs uppercase tracking-wide text-red-500 dark:text-red-300">
-                      Danger zone
-                    </p>
-                    <p className="app-text mt-2 text-sm">
-                      Account deletion is not enabled here.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Footer actions */}
-              <div className={`flex flex-col gap-3 border-t ${BORDER} pt-4 md:flex-row md:items-center md:justify-between`}>
-                <p className="app-text text-sm">
-                  Changes are saved to your profile update API.
-                </p>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className={`flex-1 rounded-full border ${BORDER} px-5 py-3 text-sm font-medium transition md:flex-none ${SOFT_BTN}`}
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="app-btn-primary flex-1 rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 md:flex-none"
-                  >
-                    {loading ? "Saving..." : "Save Changes"}
-                  </button>
                 </div>
               </div>
-            </form>
-          </div>
-        </main>
+            </div>
+          </section>
+        </form>
+
+        {/* ── Footer (sticky) ─────────────────────────────────────────── */}
+        <div className={`flex shrink-0 items-center justify-end gap-3 border-t ${BORDER} px-5 py-4`}>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${SOFT_BTN}`}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="settings-form"
+            disabled={loading}
+            className="app-btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
       </div>
     </div>
   );
