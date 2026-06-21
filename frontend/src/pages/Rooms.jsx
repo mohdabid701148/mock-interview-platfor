@@ -227,7 +227,7 @@ const Rooms = () => {
       <div className="flex">
         <Sidebar />
 
-        <main className="flex-1 px-6 py-6 lg:px-8">
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           <Navbar
             title="Interview Sessions"
             subtitle="Create, join, and manage your mock interview sessions"
@@ -241,7 +241,7 @@ const Rooms = () => {
             </div>
           )}
 
-          <section className="mt-6 app-card rounded-3xl p-8 shadow-sm">
+          <section className="mt-6 app-card rounded-3xl p-6 shadow-sm sm:p-8">
             <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
@@ -249,7 +249,7 @@ const Rooms = () => {
                   Mock Interview Workspace
                 </div>
 
-                <h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+                <h1 className="mt-5 max-w-3xl text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl lg:text-4xl">
                   Run structured coding interviews with roles, live editor, and communication.
                 </h1>
 

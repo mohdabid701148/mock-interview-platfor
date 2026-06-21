@@ -108,7 +108,7 @@ const Dashboard = () => {
       <div className="flex">
         <Sidebar />
 
-        <main className="flex-1 px-6 py-6 lg:px-8">
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
           <Navbar
             title="Dashboard"
             subtitle="A clean overview of your interview workspace"
@@ -120,7 +120,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          <section className="mt-6 app-card rounded-3xl p-8 shadow-sm">
+          <section className="mt-6 app-card rounded-3xl p-6 shadow-sm sm:p-8">
             <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-2xl">
                 <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-[#1f1f1f] dark:text-gray-300">
@@ -128,7 +128,7 @@ const Dashboard = () => {
                   MockMate Platform
                 </div>
 
-                <h1 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+                <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl lg:text-4xl">
                   Welcome back, {user?.username || "User"}.
                 </h1>
 

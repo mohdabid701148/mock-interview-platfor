@@ -7,6 +7,7 @@ import {
   User,
   Settings,
   LogOut,
+  Menu,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import NotificationBell from "./NotificationBell";
@@ -90,24 +91,35 @@ const Navbar = ({
     "U";
 
   return (
-    <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-4 transition-colors duration-300 dark:border-[#2a2a2a] dark:bg-[#171717] md:flex-row md:items-center md:justify-between">
-      <div>
-        <p className="text-sm text-slate-500 dark:text-gray-400">
-          Welcome back 👋
-        </p>
+    <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 transition-colors duration-300 dark:border-[#2a2a2a] dark:bg-[#171717] sm:px-6 md:flex-row md:items-center md:justify-between">
+      <div className="flex items-center gap-3">
+        {/* Hamburger — opens the mobile drawer (hidden on lg+) */}
+        <button
+          onClick={() => window.dispatchEvent(new Event("toggle-sidebar"))}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-100 dark:border-[#2a2a2a] dark:text-gray-300 dark:hover:bg-[#262626] lg:hidden"
+          aria-label="Open menu"
+        >
+          <Menu size={20} />
+        </button>
 
-        <h2 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">
-          {title}
-        </h2>
-
-        {subtitle && (
-          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
-            {subtitle}
+        <div className="min-w-0">
+          <p className="text-sm text-slate-500 dark:text-gray-400">
+            Welcome back 👋
           </p>
-        )}
+
+          <h2 className="mt-1 truncate text-xl font-semibold text-slate-900 dark:text-white sm:text-2xl">
+            {title}
+          </h2>
+
+          {subtitle && (
+            <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <div className="relative hidden md:block">
           <Search
             size={16}

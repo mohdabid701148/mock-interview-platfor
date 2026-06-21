@@ -496,7 +496,7 @@ const Room = () => {
         <div className="flex">
           <Sidebar />
 
-          <main className="flex-1 px-6 py-6 lg:px-8">
+          <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
             <Navbar title="Interview Session" subtitle="Loading session details" />
 
             <div className="mt-6 app-card rounded-3xl p-8 text-sm app-text shadow-sm">
@@ -514,7 +514,7 @@ const Room = () => {
         <div className="flex">
           <Sidebar />
 
-          <main className="flex-1 px-6 py-6 lg:px-8">
+          <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
             <Navbar title="Interview Session" subtitle="Session details" />
 
             <div className="mt-6 app-card rounded-3xl p-8 shadow-sm">
