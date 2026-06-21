@@ -115,10 +115,18 @@ export const resendVerificationSchema = {
   },
 };
 
-export const verifyEmailParamSchema = {
-  params: {
-    token: {
+export const verifyEmailSchema = {
+  body: {
+    email: {
       required: true,
+      type: "string",
+      maxLength: 254,
+    },
+    code: {
+      required: true,
+      type: "string",
+      minLength: 6,
+      maxLength: 6,
     },
   },
 };

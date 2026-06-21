@@ -59,35 +59,35 @@ const button = (url, label) => `
     ${label}
   </a>`;
 
-export const verificationEmailTemplate = ({ username, verifyUrl }) => {
+export const verificationEmailTemplate = ({ username, code }) => {
   const heading = "Verify your MockMate account";
 
   const bodyHtml = `
     <p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:24px;">
       Hi ${username || "there"}, welcome to MockMate! 👋<br/>
-      Please confirm your email address to activate your account.
+      Enter this code in the app to verify your email and activate your account.
     </p>
-    <div style="margin:28px 0;">${button(verifyUrl, "Verify Email")}</div>
-    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.muted};">
-      This link expires in <strong>24 hours</strong>.
-    </p>
+    <div style="margin:28px 0;text-align:center;">
+      <div style="display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:16px 28px;font-size:32px;font-weight:700;letter-spacing:10px;color:${BRAND.color};font-family:'Courier New',monospace;">
+        ${code}
+      </div>
+    </div>
     <p style="margin:0;font-size:13px;color:${BRAND.muted};">
-      If the button doesn't work, copy and paste this URL into your browser:<br/>
-      <a href="${verifyUrl}" style="color:${BRAND.accent};word-break:break-all;">${verifyUrl}</a>
+      This code expires in <strong>15 minutes</strong>. If you didn't sign up, you can ignore this email.
     </p>`;
 
   const text = [
     `Verify your MockMate account`,
     ``,
     `Hi ${username || "there"}, welcome to MockMate!`,
-    `Confirm your email by opening this link (expires in 24 hours):`,
-    verifyUrl,
+    `Your verification code is: ${code}`,
+    `It expires in 15 minutes.`,
     ``,
     `If you didn't sign up, you can ignore this email.`,
   ].join("\n");
 
   return {
-    subject: "Verify your MockMate account",
+    subject: `Your MockMate verification code: ${code}`,
     html: baseLayout({ heading, bodyHtml }),
     text,
   };

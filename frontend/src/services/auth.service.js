@@ -48,10 +48,11 @@ export const authService = {
     return res.data;
   },
 
-  verifyEmail: async (token) => {
+  verifyEmail: async (email, code) => {
     // Public endpoint — skip the 401/403 refresh-and-redirect interceptor.
-    const res = await axiosInstance.get(
-      `/auth/verify-email/${token}`,
+    const res = await axiosInstance.post(
+      "/auth/verify-email",
+      { email, code },
       { skipAuthRefresh: true }
     );
 

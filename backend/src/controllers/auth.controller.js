@@ -12,13 +12,6 @@ const cookieOptions = {
   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 };
 
-// Build the front-end verification link the user clicks in their inbox.
-const buildVerifyUrl = (rawToken) => {
-  const base = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
-  return `${base}/verify-email/${rawToken}`;
-};
-
-
 const registerUser = asyncHandler(async (req, res) => {
 
   const { email, username, password } = req.body;
@@ -51,23 +44,23 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
   });
 
-  // Generate verification token (raw is emailed, only the hash is stored).
-  const rawToken = user.generateEmailVerificationToken();
+  // Generate verification code (raw is emailed, only the hash is stored).
+  const code = user.generateEmailVerificationCode();
   await user.save({ validateBeforeSave: false });
 
   // Send the verification email. If delivery fails, the account still exists
-  // (unverified) so the user can request a fresh link via /resend-verification.
+  // (unverified) so the user can request a fresh code via /resend-verification.
   try {
     await sendVerificationEmail({
       to: user.email,
       username: user.username,
-      verifyUrl: buildVerifyUrl(rawToken),
+      code,
     });
   } catch (err) {
     console.error("[register] verification email failed:", err.message);
     throw new ApiError(
       502,
-      "Account created, but we couldn't send the verification email. Please use 'Resend verification' to try again."
+      "Account created, but we couldn't send the verification code. Please use 'Resend code' to try again."
     );
   }
 
@@ -75,7 +68,7 @@ const registerUser = asyncHandler(async (req, res) => {
     new ApiResponse(
       201,
       { email: user.email },
-      "Verification email sent. Please verify your email."
+      "Verification code sent to your email. Please enter it to verify."
     )
   );
 });
@@ -239,26 +232,29 @@ const logoutUser = asyncHandler(async (req, res) => {
 /* ================= VERIFY EMAIL ================= */
 
 const verifyEmail = asyncHandler(async (req, res) => {
-  const { token } = req.params;
+  const { email, code } = req.body;
 
-  if (!token) {
-    throw new ApiError(400, "Verification token is required");
+  if (!email || !code) {
+    throw new ApiError(400, "Email and verification code are required");
   }
 
-  // Hash the incoming raw token and match it against the stored hash.
-  const hashedToken = crypto
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Hash the incoming code and match it against the stored hash for this email.
+  const hashedCode = crypto
     .createHash("sha256")
-    .update(token)
+    .update(String(code).trim())
     .digest("hex");
 
   const user = await User.findOne({
-    emailVerificationToken: hashedToken,
+    email: normalizedEmail,
+    emailVerificationToken: hashedCode,
     emailVerificationExpiry: { $gt: new Date() },
   });
 
-  // Generic message — don't reveal whether the token was wrong vs expired.
+  // Generic message — don't reveal whether the code was wrong vs expired.
   if (!user) {
-    throw new ApiError(400, "Invalid or expired verification link");
+    throw new ApiError(400, "Invalid or expired verification code");
   }
 
   user.isVerified = true;
@@ -293,7 +289,7 @@ const resendVerification = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {},
-        "If an unverified account exists for this email, a new verification link has been sent."
+        "If an unverified account exists for this email, a new verification code has been sent."
       )
     );
 
@@ -303,14 +299,14 @@ const resendVerification = asyncHandler(async (req, res) => {
     return genericResponse();
   }
 
-  const rawToken = user.generateEmailVerificationToken();
+  const code = user.generateEmailVerificationCode();
   await user.save({ validateBeforeSave: false });
 
   try {
     await sendVerificationEmail({
       to: user.email,
       username: user.username,
-      verifyUrl: buildVerifyUrl(rawToken),
+      code,
     });
   } catch (err) {
     // Log but still return the generic response (don't leak send status).

@@ -115,24 +115,13 @@ export const sendEmail = async ({ to, subject, html, text }) => {
 };
 
 /**
- * Sends the account verification email.
- * Accepts both { to } and { email }, and both { verifyUrl } and { verificationUrl }
- * so existing controller calls keep working unchanged.
+ * Sends the account verification email containing a 6-digit code.
+ * Accepts both { to } and { email } for the recipient.
  */
-export const sendVerificationEmail = async ({
-  to,
-  email,
-  username,
-  verifyUrl,
-  verificationUrl,
-}) => {
+export const sendVerificationEmail = async ({ to, email, username, code }) => {
   const recipient = to || email;
-  const url = verifyUrl || verificationUrl;
 
-  const { subject, html, text } = verificationEmailTemplate({
-    username,
-    verifyUrl: url,
-  });
+  const { subject, html, text } = verificationEmailTemplate({ username, code });
 
   return sendEmail({ to: recipient, subject, html, text });
 };

@@ -140,20 +140,20 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-// Generates a high-entropy verification token. Returns the RAW token (sent in the
-// email link) but persists only its SHA-256 hash + a 24h expiry on the document.
+// Generates a 6-digit verification code. Returns the RAW code (emailed to the
+// user) but persists only its SHA-256 hash + a 15-minute expiry on the document.
 // Caller is responsible for saving the document afterwards.
-userSchema.methods.generateEmailVerificationToken = function () {
-  const rawToken = crypto.randomBytes(32).toString("hex");
+userSchema.methods.generateEmailVerificationCode = function () {
+  const code = String(crypto.randomInt(100000, 1000000)); // always 6 digits
 
   this.emailVerificationToken = crypto
     .createHash("sha256")
-    .update(rawToken)
+    .update(code)
     .digest("hex");
 
-  this.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+  this.emailVerificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
-  return rawToken;
+  return code;
 };
 
 export const User =

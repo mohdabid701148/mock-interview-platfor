@@ -75,8 +75,8 @@ function App() {
           }
         />
 
-        {/* Public — must work whether or not the user is logged in */}
-        <Route path="/verify-email/:token" element={<VerifyEmail />} />
+        {/* Public — email verification by code */}
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />

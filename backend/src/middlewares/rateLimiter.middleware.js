@@ -60,6 +60,22 @@ export const resendVerificationLimiter = rateLimit({
   validate: { keyGeneratorIpFallback: false },
 });
 
+// Verify-code attempts: max 10 per 15 min per email, to stop brute-forcing the
+// 6-digit code (900k combinations would otherwise be guessable).
+export const verifyCodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  keyGenerator: (req) =>
+    `verify:${(req.body?.email || "").toLowerCase().trim()}`,
+  message: {
+    success: false,
+    message: "Too many verification attempts. Please request a new code and try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { keyGeneratorIpFallback: false },
+});
+
 // Strict limits for code execution to prevent abuse
 export const codeExecutionLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes

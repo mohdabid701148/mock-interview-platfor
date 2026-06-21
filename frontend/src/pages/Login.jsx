@@ -184,17 +184,24 @@ const Login = () => {
 
             {needsVerification && (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                <p>Your email isn’t verified yet. Check your inbox for the link.</p>
+                <p>Your email isn’t verified yet. Enter the 6-digit code we emailed you.</p>
                 {resendState.msg && (
                   <p className="mt-2 text-xs text-amber-700">{resendState.msg}</p>
                 )}
                 <button
                   type="button"
+                  onClick={() => navigate("/verify-email", { state: { email: form.email } })}
+                  className="mt-3 w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Enter verification code
+                </button>
+                <button
+                  type="button"
                   onClick={handleResend}
                   disabled={resendState.loading || !form.email}
-                  className="mt-3 w-full rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
                 >
-                  {resendState.loading ? "Sending..." : "Resend verification email"}
+                  {resendState.loading ? "Sending..." : "Resend code"}
                 </button>
               </div>
             )}
