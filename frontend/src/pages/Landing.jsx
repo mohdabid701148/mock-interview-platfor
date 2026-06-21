@@ -39,25 +39,25 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
+      {/* ── Hero (centered) ─────────────────────────────────────────────── */}
       <section className="border-b border-slate-100">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:py-24">
-          <div>
+        <div className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 sm:pt-24">
+          <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
             <p className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
               Free · peer-to-peer · built for students
             </p>
 
-            <h1 className="mt-5 text-[2rem] font-bold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.3rem]">
+            <h1 className="mt-5 text-[2rem] font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.25rem]">
               Run a real coding interview with a friend.
             </h1>
 
-            <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
+            <p className="mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
               Not flashcards. Not a chatbot. A shared editor, code that actually
               runs, and an honest scorecard at the end — so you practice the part
               that's hard: thinking out loud while someone watches.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
               <Link
                 to="/signup"
                 className="group flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-blue-700"
@@ -73,7 +73,7 @@ const Landing = () => {
               </Link>
             </div>
 
-            <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500">
+            <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-slate-500">
               {["No card needed", "Runs in your browser", "5 languages"].map((t) => (
                 <li key={t} className="flex items-center gap-1.5">
                   <Check size={15} className="text-blue-600" />
@@ -83,8 +83,8 @@ const Landing = () => {
             </ul>
           </div>
 
-          {/* Product preview (dark window on the light page) */}
-          <div className="relative">
+          {/* Product preview — centered below the hero copy */}
+          <div className="mx-auto mt-14 max-w-4xl">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-[#0d1117] shadow-xl shadow-slate-300/40">
               <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.03] px-4 py-2.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
@@ -97,7 +97,7 @@ const Landing = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-[0.85fr_1.15fr]">
+              <div className="grid grid-cols-1 text-left sm:grid-cols-[0.8fr_1.2fr]">
                 <div className="hidden border-r border-white/10 p-4 sm:block">
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">Medium</span>
@@ -132,34 +132,23 @@ const Landing = () => {
                 </div>
               </div>
             </div>
-
-            {/* floating feedback chip — light card */}
-            <div className="absolute -bottom-4 -left-3 hidden rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg sm:block">
-              <p className="text-[11px] font-medium text-slate-500">Communication</p>
-              <div className="mt-1.5 flex items-center gap-1">
-                {[1, 2, 3, 4].map((i) => (
-                  <span key={i} className="h-1.5 w-5 rounded-full bg-blue-600" />
-                ))}
-                <span className="h-1.5 w-5 rounded-full bg-slate-200" />
-              </div>
-            </div>
           </div>
         </div>
-      </section>
 
-      {/* ── Language strip ─────────────────────────────────────────────── */}
-      <section className="bg-slate-50">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-4 py-6 text-sm sm:px-6">
-          <span className="font-medium text-slate-500">Code in the languages you already use:</span>
-          {["JavaScript", "Python", "Java", "C++", "TypeScript"].map((l) => (
-            <span key={l} className="font-mono font-medium text-slate-700">{l}</span>
-          ))}
+        {/* Language strip */}
+        <div className="mx-auto mt-14 max-w-6xl px-4 sm:px-6">
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 border-t border-slate-100 py-6 text-sm">
+            <span className="font-medium text-slate-500">Code in the languages you already use:</span>
+            {["JavaScript", "Python", "Java", "C++", "TypeScript"].map((l) => (
+              <span key={l} className="font-mono font-medium text-slate-700">{l}</span>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── Features ───────────────────────────────────────────────────── */}
       <section id="features" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-        <div className="max-w-2xl">
+        <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold text-blue-600">Features</p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             The whole interview, in one tab
@@ -169,20 +158,9 @@ const Landing = () => {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-6 sm:col-span-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white">
-              <Code2 size={20} />
-            </div>
-            <h3 className="mt-4 text-lg font-semibold text-slate-900">A shared editor that keeps up</h3>
-            <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
-              Monaco (the editor behind VS Code) synced in real time. The interviewer
-              sees every keystroke and language switch — so they follow your reasoning,
-              not just your final answer.
-            </p>
-          </div>
-
+        <div className="mx-auto mt-12 grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[
+            { icon: Code2, title: "A shared editor", desc: "Monaco — the editor behind VS Code — synced in real time, so the interviewer follows your reasoning, not just your answer." },
             { icon: Terminal, title: "Code that runs", desc: "Run JS, Python, Java, C++ and TS with your own inputs. Zero setup, no local environment." },
             { icon: Users, title: "One code, two roles", desc: "Share a session code. Your peer joins as interviewer or interviewee — then you swap." },
             { icon: MessageSquareText, title: "Scorecards, not vibes", desc: "Rate problem-solving, communication, and more, with written notes you can revisit." },
@@ -203,12 +181,14 @@ const Landing = () => {
       {/* ── How it works ──────────────────────────────────────────────── */}
       <section id="how" className="border-y border-slate-200 bg-slate-50">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <p className="text-sm font-semibold text-blue-600">How it works</p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            From "let's practice" to done in three steps
-          </h2>
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold text-blue-600">How it works</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              From "let's practice" to done in three steps
+            </h2>
+          </div>
 
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
             {[
               { n: "01", t: "Create a session", d: "Make a session and send the code to a friend. One of you interviews, the other solves." },
               { n: "02", t: "Work the problem", d: "Attach a question, code in the shared editor, run it, and talk through your approach." },
@@ -226,44 +206,38 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ── Maker note ────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-          <div>
-            <p className="text-sm font-semibold text-blue-600">Why MockMate</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Made by a student tired of practicing alone
-            </h2>
-            <p className="mt-4 text-base leading-7 text-slate-600">
-              Most prep tools either cost money or have you talking to yourself. The part
-              that actually shows up in a real interview — explaining your thinking while
-              someone pushes back — is the part you can't rehearse solo. MockMate is just
-              the room I wanted: grab a classmate, take turns, get real feedback. It runs
-              entirely on free infrastructure, so it stays free.
-            </p>
-          </div>
+      {/* ── Maker note (centered) ─────────────────────────────────────── */}
+      <section className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-24">
+        <p className="text-sm font-semibold text-blue-600">Why MockMate</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          Made by a student tired of practicing alone
+        </h2>
+        <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
+          Most prep tools either cost money or have you talking to yourself. The part
+          that actually shows up in a real interview — explaining your thinking while
+          someone pushes back — is the part you can't rehearse solo. MockMate is just
+          the room I wanted: grab a classmate, take turns, get real feedback. It runs
+          entirely on free infrastructure, so it stays free.
+        </p>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
-            <div className="grid grid-cols-3 divide-x divide-slate-200 text-center">
-              {[
-                { k: "Free", v: "Always" },
-                { k: "Setup", v: "None" },
-                { k: "Languages", v: "5" },
-              ].map((x) => (
-                <div key={x.k} className="px-2">
-                  <p className="text-2xl font-bold text-slate-900">{x.v}</p>
-                  <p className="mt-1 text-xs text-slate-500">{x.k}</p>
-                </div>
-              ))}
+        <div className="mx-auto mt-8 grid max-w-md grid-cols-3 divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-slate-50 py-5">
+          {[
+            { v: "Free", k: "Always" },
+            { v: "None", k: "Setup" },
+            { v: "5", k: "Languages" },
+          ].map((x) => (
+            <div key={x.k} className="px-2">
+              <p className="text-2xl font-bold text-slate-900">{x.v}</p>
+              <p className="mt-1 text-xs text-slate-500">{x.k}</p>
             </div>
-          </div>
+          ))}
         </div>
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────────── */}
       <section id="faq" className="border-t border-slate-200 bg-slate-50">
         <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Questions, answered
           </h2>
 
@@ -287,9 +261,9 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ── CTA (dark band for contrast) ──────────────────────────────── */}
+      {/* ── CTA ───────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-        <div className="rounded-3xl bg-slate-900 p-8 text-center sm:p-14">
+        <div className="rounded-3xl bg-slate-900 px-6 py-12 text-center sm:px-14 sm:py-16">
           <h2 className="text-2xl font-bold tracking-tight text-white sm:text-4xl">
             Grab a friend. Open a session.
           </h2>
@@ -298,7 +272,7 @@ const Landing = () => {
           </p>
           <Link
             to="/signup"
-            className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
           >
             Start for free
             <ArrowRight size={17} />
