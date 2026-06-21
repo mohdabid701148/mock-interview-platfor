@@ -34,6 +34,14 @@ const getRoomFromResponse = (res) => {
   return res?.data?.room || res?.data || res?.room || res;
 };
 
+// Ensure a meeting link is an absolute URL. Without a protocol the browser
+// treats it as a relative path and opens a broken tab inside the app.
+const normalizeUrl = (url) => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
+
 const getId = (value) => {
   if (!value) return "";
   if (typeof value === "string") return value;
@@ -629,7 +637,7 @@ const Room = () => {
 
                 {room?.meetingLink && (
                   <a
-                    href={room.meetingLink}
+                    href={normalizeUrl(room.meetingLink)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
@@ -1166,7 +1174,7 @@ const Room = () => {
 
                   {room?.meetingLink ? (
                     <a
-                      href={room.meetingLink}
+                      href={normalizeUrl(room.meetingLink)}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-2 inline-flex text-sm font-medium text-blue-600 hover:underline dark:text-blue-300"
