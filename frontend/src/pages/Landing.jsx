@@ -10,6 +10,13 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+// Reusing the same Unsplash imagery + slate overlay treatment as Login/Signup
+// so the landing page matches the rest of the app's grading.
+const HERO_IMG =
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1600&auto=format&fit=crop";
+const CTA_IMG =
+  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1600&auto=format&fit=crop";
+
 const features = [
   {
     icon: Code2,
@@ -80,23 +87,26 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
+      {/* ── Hero (background image + slate overlay, like Login) ──────────── */}
       <section className="relative overflow-hidden">
-        {/* glow */}
-        <div className="pointer-events-none absolute left-1/2 top-[-10%] h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-indigo-600/20 blur-[120px]" />
+        <img
+          src={HERO_IMG}
+          alt="Mock interview"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px]" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950" />
 
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:gap-12 sm:px-6 lg:grid-cols-2 lg:py-28">
+        <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:gap-12 sm:px-6 lg:grid-cols-2 lg:py-28">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-300">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-300 backdrop-blur-md">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               Peer-to-peer mock interviews
             </span>
 
             <h1 className="mt-6 text-3xl font-bold leading-tight sm:text-5xl lg:text-6xl">
               Practice interviews with{" "}
-              <span className="bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
-                real peers.
-              </span>
+              <span className="text-blue-400">real peers.</span>
             </h1>
 
             <p className="mt-5 max-w-lg text-base leading-7 text-slate-300 sm:mt-6 sm:text-lg sm:leading-8">
@@ -115,7 +125,7 @@ const Landing = () => {
               </Link>
               <Link
                 to="/login"
-                className="rounded-2xl border border-white/15 px-6 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-white/5"
+                className="rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 text-center text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/10"
               >
                 I have an account
               </Link>
@@ -129,8 +139,8 @@ const Landing = () => {
 
           {/* Editor mock */}
           <div className="relative">
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0d] shadow-2xl">
-              <div className="flex items-center gap-2 border-b border-white/10 bg-[#161616] px-4 py-3">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0d]/90 shadow-2xl backdrop-blur-md">
+              <div className="flex items-center gap-2 border-b border-white/10 bg-[#161616]/90 px-4 py-3">
                 <span className="h-3 w-3 rounded-full bg-red-400/80" />
                 <span className="h-3 w-3 rounded-full bg-amber-400/80" />
                 <span className="h-3 w-3 rounded-full bg-emerald-400/80" />
@@ -149,7 +159,7 @@ const Landing = () => {
   }
 };`}
               </pre>
-              <div className="flex items-center gap-2 border-t border-white/10 bg-[#161616] px-4 py-3">
+              <div className="flex items-center gap-2 border-t border-white/10 bg-[#161616]/90 px-4 py-3">
                 <span className="rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-400">
                   ✓ Accepted
                 </span>
@@ -175,7 +185,7 @@ const Landing = () => {
               key={title}
               className="rounded-2xl border border-white/10 bg-white/5 p-6 transition hover:border-white/20 hover:bg-white/[0.07]"
             >
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
                 <Icon size={20} />
               </div>
               <h3 className="text-lg font-semibold">{title}</h3>
@@ -205,20 +215,29 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ── CTA ───────────────────────────────────────────────────────── */}
+      {/* ── CTA (background image + slate overlay) ─────────────────────── */}
       <section className="mx-auto max-w-6xl px-5 py-14 sm:px-6 sm:py-16">
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-indigo-600/20 to-emerald-600/10 p-8 text-center sm:p-14">
-          <h2 className="text-3xl font-bold sm:text-4xl">Ready for your next mock interview?</h2>
-          <p className="mx-auto mt-4 max-w-xl text-slate-300">
-            Create your free account, grab a peer, and start practicing in minutes.
-          </p>
-          <Link
-            to="/signup"
-            className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
-          >
-            Get Started — it's free
-            <ArrowRight size={18} />
-          </Link>
+        <div className="relative overflow-hidden rounded-3xl border border-white/10">
+          <img
+            src={CTA_IMG}
+            alt="Students collaborating"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px]" />
+
+          <div className="relative z-10 p-8 text-center sm:p-14">
+            <h2 className="text-3xl font-bold sm:text-4xl">Ready for your next mock interview?</h2>
+            <p className="mx-auto mt-4 max-w-xl text-slate-300">
+              Create your free account, grab a peer, and start practicing in minutes.
+            </p>
+            <Link
+              to="/signup"
+              className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
+            >
+              Get Started — it's free
+              <ArrowRight size={18} />
+            </Link>
+          </div>
         </div>
       </section>
 
