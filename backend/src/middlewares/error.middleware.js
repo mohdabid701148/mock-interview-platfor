@@ -20,6 +20,15 @@ const errorMiddleware = (err, req, res, next) => {
     });
   }
 
+  // Mongoose cast error (e.g. malformed ObjectId) — a client mistake, not a 500
+  if (err.name === "CastError") {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid value for '${err.path}'`,
+      errors: [],
+    });
+  }
+
   // Mongoose duplicate key error
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue)[0];

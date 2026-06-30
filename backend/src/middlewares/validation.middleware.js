@@ -105,6 +105,43 @@ export const validate = (schema) => (req, res, next) => {
 // Schemas Definitions
 // ----------------------------------------------------
 
+export const registerSchema = {
+  body: {
+    email: {
+      required: true,
+      type: "string",
+      maxLength: 254,
+    },
+    username: {
+      required: true,
+      type: "string",
+      minLength: 3,
+      maxLength: 30,
+    },
+    password: {
+      required: true,
+      type: "string",
+      minLength: 6,
+      maxLength: 128,
+    },
+  },
+};
+
+export const loginSchema = {
+  body: {
+    email: {
+      required: true,
+      type: "string",
+      maxLength: 254,
+    },
+    password: {
+      required: true,
+      type: "string",
+      maxLength: 128,
+    },
+  },
+};
+
 export const resendVerificationSchema = {
   body: {
     email: {

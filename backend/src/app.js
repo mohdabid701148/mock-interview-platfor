@@ -10,6 +10,8 @@ import feedbackRoutes from "./routes/feedback.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import codeExecutionRoutes from "./routes/codeExecution.routes.js";
 import { ApiError } from "./utils/ApiError.js";
+import errorMiddleware from "./middlewares/error.middleware.js";
+import { getAllowedOrigins } from "./config/allowedOrigins.js";
 import {
   authLimiter,
   roomScheduleLimiter,
@@ -77,7 +79,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: getAllowedOrigins(),
     credentials: true,
   })
 );
@@ -101,14 +103,10 @@ app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));
 });
 
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-
-  res.status(statusCode).json({
-    success: false,
-    message: err.message || "Internal Server Error",
-    errors: err.errors || [],
-  });
-});
+// Centralized error handler: maps ApiError / Mongoose / JWT errors to consistent
+// responses, masks unexpected 500 messages (no internal/stack leakage), and logs
+// unhandled errors. Replaces the previous inline handler that leaked raw error
+// messages and logged nothing.
+app.use(errorMiddleware);
 
 export default app;

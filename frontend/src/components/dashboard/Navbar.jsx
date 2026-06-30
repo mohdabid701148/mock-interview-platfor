@@ -30,28 +30,19 @@ const Navbar = ({
   // Sync local search state with parent prop if provided
   useEffect(() => {
     if (searchValue !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalSearch(searchValue);
     }
   }, [searchValue]);
 
   const handleLogout = async () => {
     try {
+      // logout() clears the in-memory access token and the refresh cookie.
       await logout?.();
     } catch (error) {
       console.log("Logout error:", error?.response?.data || error);
     } finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-
-      sessionStorage.removeItem("accessToken");
-      sessionStorage.removeItem("token");
-      sessionStorage.removeItem("user");
-
-      window.dispatchEvent(new Event("auth-change"));
-
       setShowMenu(false);
-
       navigate("/login", { replace: true });
     }
   };

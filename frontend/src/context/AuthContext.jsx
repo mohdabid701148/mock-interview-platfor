@@ -1,138 +1,66 @@
-import { createContext, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { authService } from "../services/auth.service";
+import { AuthContext } from "./auth-context";
+import {
+  setAccessToken,
+  clearAccessToken,
+  subscribeAccessToken,
+  setAuthFailureHandler,
+} from "../api/tokenStore";
 
-export const AuthContext = createContext();
+// Backend wraps payloads in ApiResponse: { statusCode, data, message }.
+// authService methods return that body (res.data), so `res.data` is the inner
+// payload here.
+const extractUser = (res) => res?.data?.user || res?.user || res?.data || null;
 
-const safeParseUser = () => {
-  try {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  } catch {
-    localStorage.removeItem("user");
-    return null;
-  }
-};
-
-const getAccessToken = (res) => {
-  return (
-    res?.data?.data?.accessToken ||
-    res?.data?.accessToken ||
-    res?.data?.data?.tokens?.accessToken ||
-    res?.data?.tokens?.accessToken ||
-    res?.accessToken ||
-    null
-  );
-};
-
-const getRefreshToken = (res) => {
-  return (
-    res?.data?.data?.refreshToken ||
-    res?.data?.refreshToken ||
-    res?.data?.data?.tokens?.refreshToken ||
-    res?.data?.tokens?.refreshToken ||
-    res?.refreshToken ||
-    null
-  );
-};
-
-const getUser = (res) => {
-  return (
-    res?.data?.data?.user ||
-    res?.data?.user ||
-    res?.data?.data?.userData ||
-    res?.data?.userData ||
-    res?.user ||
-    null
-  );
-};
+const extractAccessToken = (res) =>
+  res?.data?.accessToken || res?.accessToken || null;
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(safeParseUser);
-  const [accessToken, setAccessToken] = useState(() => {
-    return localStorage.getItem("accessToken");
-  });
+  const [user, setUser] = useState(null);
+  // Mirror of the in-memory access token, kept in React state so SocketContext
+  // can reconnect whenever the token changes. The authoritative copy lives in
+  // tokenStore (memory only) — never in localStorage/sessionStorage/cookies.
+  const [accessToken, setAccessTokenState] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const clearAuthStorage = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    sessionStorage.clear();
-    setAccessToken(null);
-    setUser(null);
-    window.dispatchEvent(new Event("auth-change"));
-  };
+  // Ensures session restoration runs exactly once, even under React StrictMode's
+  // double-invoked effects (a second concurrent refresh would fail rotation).
+  const bootstrapStarted = useRef(false);
 
   const fetchCurrentUser = async () => {
-    try {
-      const res = await authService.currentUser();
+    const res = await authService.currentUser();
+    const currentUser = extractUser(res);
+    setUser(currentUser || null);
+    return currentUser || null;
+  };
 
-      const currentUser =
-        res?.data?.data?.user ||
-        res?.data?.user ||
-        res?.data?.data ||
-        res?.data ||
-        res;
-
-      setUser(currentUser);
-
-      if (currentUser) {
-        localStorage.setItem("user", JSON.stringify(currentUser));
-      }
-
-      return currentUser;
-    } catch (err) {
-      const status = err?.response?.status;
-
-      if (status === 401 || status === 403) {
-        // Genuine auth failure — clear everything
-        clearAuthStorage();
-        return null;
-      }
-
-      // For 429 (rate limited) or network errors, keep cached user
-      // The user IS authenticated, just temporarily blocked
-      const cachedUser = safeParseUser();
-      if (cachedUser) {
-        setUser(cachedUser);
-        return cachedUser;
-      }
-
-      // No cached user and can't verify — treat as unauthenticated
-      setUser(null);
-      localStorage.removeItem("user");
-      return null;
-    } finally {
-      setLoading(false);
+  const refreshAccessToken = async () => {
+    const res = await authService.refresh();
+    const token = extractAccessToken(res);
+    if (!token) {
+      throw new Error("No access token returned from refresh");
     }
+    setAccessToken(token); // memory only
+    return token;
   };
 
   const login = async (payload) => {
     const res = await authService.login(payload);
 
-    const token = getAccessToken(res);
-    const refreshToken = getRefreshToken(res);
-    const loggedInUser = getUser(res);
+    const token = extractAccessToken(res);
+    const loggedInUser = extractUser(res);
 
     if (!token) {
       throw new Error("Access token not found in backend login response");
     }
 
-    localStorage.setItem("accessToken", token);
-    setAccessToken(token);
-
-    if (refreshToken) {
-      localStorage.setItem("refreshToken", refreshToken);
-    }
+    setAccessToken(token); // memory only — refresh token is set as an HttpOnly cookie by the server
 
     if (loggedInUser) {
-      localStorage.setItem("user", JSON.stringify(loggedInUser));
       setUser(loggedInUser);
     } else {
       await fetchCurrentUser();
     }
-
-    window.dispatchEvent(new Event("auth-change"));
 
     return res;
   };
@@ -143,25 +71,53 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Clears the refresh cookie and invalidates the stored refresh token.
       await authService.logout();
     } catch (err) {
       console.log("LOGOUT ERROR:", err?.response?.data || err);
     } finally {
-      clearAuthStorage();
+      clearAccessToken(); // memory only
+      setUser(null);
     }
   };
 
   useEffect(() => {
-    // Public pages must render instantly without waiting on /current-user
-    // (which would otherwise block the landing page during a Render cold start).
-    const publicRoutes = ["/", "/login", "/signup", "/verify-email"];
+    // Mirror the in-memory token into React state (consumed by SocketContext).
+    const unsubscribe = subscribeAccessToken(setAccessTokenState);
 
-    if (publicRoutes.includes(window.location.pathname)) {
-      setLoading(false);
-      return;
+    // Invoked by the axios interceptor when a silent refresh ultimately fails.
+    setAuthFailureHandler(() => {
+      setUser(null);
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login");
+      }
+    });
+
+    // Session restoration: memory is empty on every load/refresh/restart.
+    // Try to mint a fresh access token from the HttpOnly refresh cookie, then
+    // restore the authenticated user. If there is no valid refresh cookie, the
+    // user is simply treated as logged out (no redirect — public pages render).
+    const bootstrap = async () => {
+      try {
+        await refreshAccessToken();
+        await fetchCurrentUser();
+      } catch {
+        clearAccessToken();
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!bootstrapStarted.current) {
+      bootstrapStarted.current = true;
+      bootstrap();
     }
 
-    fetchCurrentUser();
+    return () => {
+      unsubscribe();
+      setAuthFailureHandler(null);
+    };
   }, []);
 
   return (
@@ -173,6 +129,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        refreshAccessToken,
         refetchUser: fetchCurrentUser,
       }}
     >

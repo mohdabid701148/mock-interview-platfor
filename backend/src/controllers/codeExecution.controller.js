@@ -18,7 +18,7 @@ function validateRequest(language, code) {
     );
   }
   if (Buffer.byteLength(code, "utf8") > MAX_CODE_SIZE_BYTES) {
-    throw new ApiError(413, "Code payload too large. Maximum size is 50KB.");
+    throw new ApiError(413, "Code payload too large. Maximum size is 100KB.");
   }
 }
 

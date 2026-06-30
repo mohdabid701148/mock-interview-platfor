@@ -34,10 +34,7 @@ const LoginForm = () => {
         throw new Error("Email and password are required");
       }
 
-      const res = await login(formData);
-
-      console.log("LOGIN SUCCESS RESPONSE:", res);
-      console.log("TOKEN AFTER LOGIN:", localStorage.getItem("accessToken"));
+      await login(formData);
 
       setDebugMessage("Login successful");
 

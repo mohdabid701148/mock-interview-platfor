@@ -19,6 +19,21 @@ export const authService = {
     return res.data;
   },
 
+  // Mint a new access token from the HttpOnly refresh cookie. skipAuthRefresh
+  // prevents the response interceptor from recursively trying to refresh (and
+  // from redirecting to /login) when there is no valid refresh cookie.
+  refresh: async () => {
+    const res = await axiosInstance.post(
+      "/auth/refresh-token",
+      {},
+      {
+        skipAuthRefresh: true,
+      }
+    );
+
+    return res.data;
+  },
+
   logout: async () => {
     const res = await axiosInstance.post(
       "/auth/logout",

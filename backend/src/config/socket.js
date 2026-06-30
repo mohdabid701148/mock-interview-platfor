@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/User.model.js";
 import { registerRoomSocketHandlers } from "../sockets/room.socket.js";
 import { registerEditorSocketHandlers } from "../sockets/editor.socket.js";
+import { getAllowedOrigins } from "./allowedOrigins.js";
 
 const userSocketRegistry = new Map(); // Map<userIdString, Set<socketIdString>>
 let ioInstance = null;
@@ -35,15 +36,6 @@ export const emitToRoom = (room, eventName, data) => {
   if (intervieweeId) userIds.add(intervieweeId);
 
   userIds.forEach((uid) => emitToUser(uid, eventName, data));
-};
-
-const getAllowedOrigins = () => {
-  const origins = process.env.CORS_ORIGIN || "http://localhost:5173";
-
-  return origins
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
 };
 
 export const initializeSocket = (server) => {

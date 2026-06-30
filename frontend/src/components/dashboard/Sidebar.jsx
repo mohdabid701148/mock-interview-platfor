@@ -35,6 +35,7 @@ const Sidebar = () => {
 
   // Close the drawer whenever the route changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileOpen(false);
   }, [location.pathname]);
 
@@ -51,11 +52,10 @@ const Sidebar = () => {
 
   const handleLogout = async () => {
     try {
+      // logout() clears the in-memory access token and the refresh cookie.
       await logout?.();
     } finally {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.replace("/login");
+      navigate("/login", { replace: true });
     }
   };
 

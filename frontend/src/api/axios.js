@@ -1,10 +1,16 @@
 import axios from "axios";
+import {
+  getAccessToken,
+  setAccessToken,
+  triggerAuthFailure,
+} from "./tokenStore";
 
-const BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
+  // Always send the HttpOnly refresh cookie on cross-site requests.
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -26,12 +32,17 @@ const processQueue = (error = null) => {
   failedQueue = [];
 };
 
+// Request interceptor — attach the in-memory access token as a Bearer header.
+// If there is no token (logged out / not yet restored), the request goes out
+// without an Authorization header.
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
 
-    if (token && token !== "undefined" && token !== "null") {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
     }
 
     return config;
@@ -39,11 +50,14 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor — on 401, silently refresh the access token using the
+// HttpOnly refresh cookie, then replay the original (and any queued) requests.
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config || {};
 
+    // Public/auth bootstrap calls opt out of the refresh-and-redirect behavior.
     if (originalRequest.skipAuthRefresh) {
       return Promise.reject(error);
     }
@@ -53,6 +67,8 @@ axiosInstance.interceptors.response.use(
       !originalRequest._retry &&
       !originalRequest.url?.includes("/refresh-token")
     ) {
+      // A refresh is already in flight — queue this request and replay it once
+      // the new access token is in memory.
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -65,44 +81,36 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const storedRefreshToken = localStorage.getItem("refreshToken");
-
+        // The browser automatically attaches the HttpOnly refresh cookie.
+        // No token is read from or written to any persistent storage.
         const refreshResponse = await axios.post(
-          `${BASE_URL}/auth/refresh-token`,
-          { refreshToken: storedRefreshToken || undefined },
-          {
-            withCredentials: true,
-          }
+          `${API_BASE_URL}/auth/refresh-token`,
+          {},
+          { withCredentials: true }
         );
 
         const newAccessToken =
           refreshResponse.data?.data?.accessToken ||
           refreshResponse.data?.accessToken;
 
-        const newRefreshToken =
-          refreshResponse.data?.data?.refreshToken ||
-          refreshResponse.data?.refreshToken;
-
-        if (newAccessToken) {
-          localStorage.setItem("accessToken", newAccessToken);
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        if (!newAccessToken) {
+          throw new Error("No access token returned from refresh");
         }
 
-        if (newRefreshToken) {
-          localStorage.setItem("refreshToken", newRefreshToken);
-        }
+        // Store ONLY in memory; update the queued + original requests.
+        setAccessToken(newAccessToken);
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         processQueue();
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
 
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
+        // Refresh failed — drop the in-memory token and let the React layer
+        // clear auth state and redirect to /login.
+        setAccessToken(null);
+        triggerAuthFailure();
 
-        window.dispatchEvent(new Event("auth-change"));
-        window.location.replace("/login");
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

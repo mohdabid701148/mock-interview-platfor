@@ -5,9 +5,12 @@ import jwt from "jsonwebtoken";
 
 const verifyJWT = asyncHandler(async (req, _, next) => {
 
-    const token =
-        req.cookies?.accessToken ||
-        req.headers?.authorization?.replace("Bearer ", "");
+    // Access token is sent ONLY as a Bearer header (held in SPA memory). It is
+    // never stored in a cookie, so there is no cookie fallback here.
+    const authHeader = req.headers?.authorization || "";
+    const token = authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7).trim()
+        : null;
 
     if (!token) {
         throw new ApiError(401, "Unauthorized request");
@@ -37,3 +40,4 @@ const verifyJWT = asyncHandler(async (req, _, next) => {
 });
 
 export { verifyJWT };
+

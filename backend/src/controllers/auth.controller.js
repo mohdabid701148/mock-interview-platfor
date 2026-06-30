@@ -6,10 +6,29 @@ import { sendVerificationEmail } from "../services/email.service.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
-const cookieOptions = {
+// The refresh token is the ONLY authentication cookie. It is HttpOnly (never
+// readable by JS), Secure in production, and SameSite=None in production so it
+// flows on cross-site requests (Vercel frontend → Render backend). A maxAge is
+// set so the cookie survives a browser restart (otherwise it would be a session
+// cookie and silent restoration would fail after closing the browser).
+const isProd = process.env.NODE_ENV === "production";
+
+const REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days — matches REFRESH_TOKEN_EXPIRY
+
+const refreshCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  secure: isProd,
+  sameSite: isProd ? "none" : "lax",
+  path: "/",
+  maxAge: REFRESH_COOKIE_MAX_AGE,
+};
+
+// clearCookie must use the same attributes (minus maxAge) the cookie was set with.
+const clearRefreshCookieOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? "none" : "lax",
+  path: "/",
 };
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -121,17 +140,17 @@ const loginUser = asyncHandler(async (req, res) => {
   const loggedInUser = await User.findById(user._id)
     .select("-password -refreshToken");
 
+  // Only the refresh token goes into a cookie. The access token is returned in
+  // the body so the SPA can hold it in memory (never persisted to storage).
   return res
     .status(200)
-    .cookie("accessToken", accessToken, cookieOptions)
-    .cookie("refreshToken", refreshToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, refreshCookieOptions)
     .json(
       new ApiResponse(
         200,
         {
           user: loggedInUser,
           accessToken,
-          refreshToken,
         },
         "User logged in successfully"
       )
@@ -141,10 +160,9 @@ const loginUser = asyncHandler(async (req, res) => {
 /* ================= REFRESH TOKEN ================= */
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken =
-    req.cookies?.refreshToken ||
-    req.body?.refreshToken ||
-    req.headers?.authorization?.replace("Bearer ", "");
+  // The refresh token is accepted ONLY from the HttpOnly cookie — never from the
+  // body or an Authorization header.
+  const incomingRefreshToken = req.cookies?.refreshToken;
 
   if (!incomingRefreshToken) {
     throw new ApiError(401, "Unauthorized request");
@@ -182,16 +200,15 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   await user.save({
     validateBeforeSave: false,
   });
+  // Rotate the refresh cookie and return ONLY the new access token in the body.
   return res
     .status(200)
-    .cookie("accessToken", newAccessToken, cookieOptions)
-    .cookie("refreshToken", newRefreshToken, cookieOptions)
+    .cookie("refreshToken", newRefreshToken, refreshCookieOptions)
     .json(
       new ApiResponse(
         200,
         {
           accessToken: newAccessToken,
-          refreshToken: newRefreshToken,
         },
         "Tokens refreshed successfully"
       )
@@ -218,8 +235,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   );
   return res
     .status(200)
-    .clearCookie("accessToken", cookieOptions)
-    .clearCookie("refreshToken", cookieOptions)
+    .clearCookie("refreshToken", clearRefreshCookieOptions)
     .json(
       new ApiResponse(
         200,
@@ -262,7 +278,6 @@ const verifyEmail = asyncHandler(async (req, res) => {
   user.emailVerificationExpiry = null;
 
   await user.save({ validateBeforeSave: false });
-
   return res.status(200).json(
     new ApiResponse(
       200,
