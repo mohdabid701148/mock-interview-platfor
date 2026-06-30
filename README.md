@@ -12,7 +12,7 @@ Practice technical interviews the way they actually happen: pair up with a peer,
 
 ## ✨ Features
 
-- **Authentication** — register/login with JWT access + refresh tokens (rotating refresh tokens).
+- **Authentication** — register/login with JWT access token (in-memory) + refresh token (HttpOnly, Secure, SameSite cookie with rotation).
 - **Email verification** — 6-digit code sent on signup (via Brevo); login is blocked until verified.
 - **Role-based sessions** — create an interview session and pair up as **interviewer** and **interviewee**.
 - **Real-time collaboration** — a shared **Monaco** editor (the editor behind VS Code) synced live over Socket.IO; every keystroke and language switch appears for both participants.
@@ -34,7 +34,7 @@ Practice technical interviews the way they actually happen: pair up with a peer,
 - Tailwind CSS v4
 - Monaco Editor (`@monaco-editor/react`)
 - Socket.IO client
-- Axios (with automatic token-refresh interceptor)
+- Axios (with automatic token-refresh interceptor and in-memory `tokenStore.js`)
 - lucide-react icons
 
 **Backend**
@@ -66,8 +66,8 @@ React SPA (Vercel)
                                           └── Brevo HTTP API (verification emails)
 ```
 
-- **Auth:** access token (short-lived) + refresh token (rotating). The SPA sends the access token as a `Bearer` header; an Axios interceptor transparently refreshes it on `401`.
-- **Real-time:** Socket.IO handshake is gated by JWT. Editor state is kept in memory and autosaved to MongoDB for active sessions.
+- **Auth:** Access token is stored strictly in-memory (XSS-resistant) and the rotating refresh token is stored in an HttpOnly, Secure, SameSite cookie. Outgoing REST requests attach the access token in `Authorization: Bearer <token>` headers. The Axios interceptor transparently runs a silent refresh on `401` errors and replays pending requests.
+- **Real-time:** Socket.IO connection handshake is authenticated via JWT access token. Editor state is kept in memory and autosaved to MongoDB for active sessions.
 - **Email:** uses Brevo's **HTTP API** (not SMTP) because most PaaS hosts block outbound SMTP ports.
 
 ---
