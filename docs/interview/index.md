@@ -29,6 +29,7 @@ Each link below redirects to a dedicated topic guide containing implementation d
 - [React Architecture & Context API](react-architecture.md) — React 19 structures, app boot flows, auth/socket context providers, hooks, and axios queues.
 - [Deployment, CORS, & Environments](deployment.md) — Vercel and Render layouts, CORS credentials constraints, proxy routing, and Helmet CSP settings.
 - [Security, Encryption, & Rate Limiting](security.md) — Hashing algorithms, express rate limit structures, body sizes, NAT blocking, and XSS sanitizers.
+- [System Design](system-design.md) — High-level distributed systems architecture, collaborative editor data synchronization, sandboxed code execution environments, and microservices scalability.
 
 ---
 
